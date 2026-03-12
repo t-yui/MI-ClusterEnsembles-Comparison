@@ -50,7 +50,7 @@ pd.Series(stab_dict).to_csv("../results/stabs_balanced.csv", index=False)
 stab_dict = {}
 for K in Ks:
     for STD_DEV in STD_DEVs:
-        ogger.info("====== n={0}, STD_DEV:{1}, stab imbalance".format(N * K, STD_DEV))
+        logger.info("====== n={0}, STD_DEV:{1}, stab imbalance".format(N * K, STD_DEV))
         stab_tmp = eval_scores(
             N, K, DIM, STD_DEV, cls_times=100, imbalance=1, n_clst=3, random_state=1
         )
