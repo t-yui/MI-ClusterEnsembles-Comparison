@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-setwd("/your_own_path/MI-ClusterEnsembles-Comparison/scripts/")
+setwd("/Users/yuitomo/Develop/MI-ClusterEnsembles-Comparison/scripts/")
 
 library(kpodclustr)
 

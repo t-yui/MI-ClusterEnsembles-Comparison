@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-from modules import evaluate_clustering
+from modules import evaluate_clustering, paired_ttest_between_methods
 
 
 # parameters
@@ -10,6 +10,74 @@ rho_values = [0.3, 0.6]
 tau_values = [0.1, 0.3, 0.5]
 scenarios = ["MCAR", "MAR"]
 S = 200
+metrics_to_use = ["ARI", "NMI", "Silhouette", "Purity"]
+
+
+def save_scores(list_ARI, list_NMI, list_SS, list_P, outpath):
+    res_scores = pd.DataFrame(
+        {
+            "ARI": list_ARI,
+            "NMI": list_NMI,
+            "Silhouette": list_SS,
+            "Purity": list_P,
+        }
+    )
+    res_scores.to_csv(outpath, index=False)
+
+
+def append_nan_scores(list_ARI, list_NMI, list_SS, list_P):
+    list_ARI.append(np.nan)
+    list_NMI.append(np.nan)
+    list_SS.append(np.nan)
+    list_P.append(np.nan)
+
+
+def append_scores(list_ARI, list_NMI, list_SS, list_P, data, labels_true, labels_pred):
+    labels_pred = np.asarray(labels_pred)
+    valid = ~np.isnan(labels_pred)
+    if valid.sum() == 0:
+        append_nan_scores(list_ARI, list_NMI, list_SS, list_P)
+        return
+    _data = data.iloc[valid, :]
+    scores = evaluate_clustering(_data, labels_true[valid], labels_pred[valid])
+    list_ARI.append(scores["Adjusted Rand Index"])
+    list_NMI.append(scores["NMI"])
+    list_SS.append(scores["Silhouette"])
+    list_P.append(scores["Purity"])
+
+
+def save_paired_ttests(prefix, n, rho, tau, scenario):
+    rows = []
+    for metric in metrics_to_use:
+        score_df = pd.DataFrame(
+            {
+                "kmeans-full": pd.read_csv(
+                    f"../results/res_scores_kmeans_{prefix}_n{n}_rho{rho}.csv"
+                )[metric],
+                "k-means-CCA": pd.read_csv(
+                    f"../results/res_scores_ccakmeanspp_{prefix}_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
+                )[metric],
+                "k-pod": pd.read_csv(
+                    f"../results/res_scores_kpod_{prefix}_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
+                )[metric],
+                "MI-AClu": pd.read_csv(
+                    f"../results/res_scores_MICluEnHpp_{prefix}_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
+                )[metric],
+                "MI-NMF": pd.read_csv(
+                    f"../results/res_scores_MICluEnN_{prefix}_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
+                )[metric],
+                "MI-GNMI": pd.read_csv(
+                    f"../results/res_scores_MICluEnNMI_{prefix}_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
+                )[metric],
+            }
+        )
+        res = paired_ttest_between_methods(score_df)
+        res.insert(0, "metric", metric)
+        rows.append(res)
+    pd.concat(rows, ignore_index=True).to_csv(
+        f"../results/paired_ttest_{prefix}_n{n}_rho{rho}_tau{tau}_{scenario}.csv",
+        index=False,
+    )
 
 
 # k-means for reference
@@ -18,6 +86,8 @@ for n in n_values:
     for rho in rho_values:
         list_ARI = []
         list_NMI = []
+        list_SS = []
+        list_P = []
         res_file_name = f"res_kmeans_3c_n{n}_rho{rho}.csv"
         res = pd.read_csv(f"../results/{res_file_name}")
         for s in tqdm(range(S)):
@@ -29,7 +99,9 @@ for n in n_values:
             scores = evaluate_clustering(data, labels_true, labels_pred)
             list_ARI.append(scores["Adjusted Rand Index"])
             list_NMI.append(scores["NMI"])
-        res_scores = pd.DataFrame({"ARI": list_ARI, "NMI": list_NMI})
+            list_SS.append(scores["Silhouette"])
+            list_P.append(scores["Purity"])
+        res_scores = pd.DataFrame({"ARI": list_ARI, "NMI": list_NMI, "Silhouette": list_SS, "Purity": list_P,})
         res_scores_name = f"res_scores_kmeans_3c_n{n}_rho{rho}.csv"
         res_scores.to_csv(f"../results/{res_scores_name}")
 
@@ -38,6 +110,8 @@ for n in n_values:
     for rho in rho_values:
         list_ARI = []
         list_NMI = []
+        list_SS = []
+        list_P = []
         res_file_name = f"res_kmeans_3cib_n{n}_rho{rho}.csv"
         res = pd.read_csv(f"../results/{res_file_name}")
         for s in tqdm(range(S)):
@@ -49,7 +123,9 @@ for n in n_values:
             scores = evaluate_clustering(data, labels_true, labels_pred)
             list_ARI.append(scores["Adjusted Rand Index"])
             list_NMI.append(scores["NMI"])
-        res_scores = pd.DataFrame({"ARI": list_ARI, "NMI": list_NMI})
+            list_SS.append(scores["Silhouette"])
+            list_P.append(scores["Purity"])
+        res_scores = pd.DataFrame({"ARI": list_ARI, "NMI": list_NMI, "Silhouette": list_SS, "Purity": list_P,})
         res_scores_name = f"res_scores_kmeans_3cib_n{n}_rho{rho}.csv"
         res_scores.to_csv(f"../results/{res_scores_name}")
 
@@ -61,11 +137,9 @@ for scenario in scenarios:
         for rho in rho_values:
             for tau in tau_values:
                 list_ARI = []
-                list_SS = []
-                list_CHI = []
-                list_DBI = []
-                list_P = []
                 list_NMI = []
+                list_SS = []
+                list_P = []
                 res_file_name = (
                     f"res_ccakmeanspp_3c_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
                 )
@@ -85,7 +159,9 @@ for scenario in scenarios:
                         scores = evaluate_clustering(_data, labels_true, labels_pred)
                         list_ARI.append(scores["Adjusted Rand Index"])
                         list_NMI.append(scores["NMI"])
-                res_scores = pd.DataFrame({"ARI": list_ARI, "NMI": list_NMI})
+                        list_SS.append(scores["Silhouette"])
+                        list_P.append(scores["Purity"])
+                res_scores = pd.DataFrame({"ARI": list_ARI, "NMI": list_NMI, "Silhouette": list_SS, "Purity": list_P,})
                 res_scores_name = (
                     f"res_scores_ccakmeanspp_3c_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
                 )
@@ -97,11 +173,9 @@ for scenario in scenarios:
         for rho in rho_values:
             for tau in tau_values:
                 list_ARI = []
-                list_SS = []
-                list_CHI = []
-                list_DBI = []
-                list_P = []
                 list_NMI = []
+                list_SS = []
+                list_P = []
                 res_file_name = (
                     f"res_ccakmeanspp_3cib_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
                 )
@@ -121,7 +195,9 @@ for scenario in scenarios:
                         scores = evaluate_clustering(_data, labels_true, labels_pred)
                         list_ARI.append(scores["Adjusted Rand Index"])
                         list_NMI.append(scores["NMI"])
-                res_scores = pd.DataFrame({"ARI": list_ARI, "NMI": list_NMI})
+                        list_SS.append(scores["Silhouette"])
+                        list_P.append(scores["Purity"])
+                res_scores = pd.DataFrame({"ARI": list_ARI, "NMI": list_NMI, "Silhouette": list_SS, "Purity": list_P,})
                 res_scores_name = (
                     f"res_scores_ccakmeanspp_3cib_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
                 )
@@ -136,6 +212,8 @@ for scenario in scenarios:
             for tau in tau_values:
                 list_ARI = []
                 list_NMI = []
+                list_SS = []
+                list_P = []
                 res_file_name = f"res_kpod_3c_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
                 res = pd.read_csv(f"../results/{res_file_name}")
                 for s in tqdm(range(S)):
@@ -147,7 +225,9 @@ for scenario in scenarios:
                     scores = evaluate_clustering(data, labels_true, labels_pred)
                     list_ARI.append(scores["Adjusted Rand Index"])
                     list_NMI.append(scores["NMI"])
-                res_scores = pd.DataFrame({"ARI": list_ARI, "NMI": list_NMI})
+                    list_SS.append(scores["Silhouette"])
+                    list_P.append(scores["Purity"])
+                res_scores = pd.DataFrame({"ARI": list_ARI, "NMI": list_NMI, "Silhouette": list_SS, "Purity": list_P,})
                 res_scores_name = (
                     f"res_scores_kpod_3c_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
                 )
@@ -160,6 +240,8 @@ for scenario in scenarios:
             for tau in tau_values:
                 list_ARI = []
                 list_NMI = []
+                list_SS = []
+                list_P = []
                 res_file_name = f"res_kpod_3cib_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
                 res = pd.read_csv(f"../results/{res_file_name}")
                 for s in tqdm(range(S)):
@@ -171,7 +253,9 @@ for scenario in scenarios:
                     scores = evaluate_clustering(data, labels_true, labels_pred)
                     list_ARI.append(scores["Adjusted Rand Index"])
                     list_NMI.append(scores["NMI"])
-                res_scores = pd.DataFrame({"ARI": list_ARI, "NMI": list_NMI})
+                    list_SS.append(scores["Silhouette"])
+                    list_P.append(scores["Purity"])
+                res_scores = pd.DataFrame({"ARI": list_ARI, "NMI": list_NMI, "Silhouette": list_SS, "Purity": list_P,})
                 res_scores_name = (
                     f"res_scores_kpod_3cib_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
                 )
@@ -185,11 +269,9 @@ for scenario in scenarios:
         for rho in rho_values:
             for tau in tau_values:
                 list_ARI = []
-                list_SS = []
-                list_CHI = []
-                list_DBI = []
-                list_P = []
                 list_NMI = []
+                list_SS = []
+                list_P = []
                 res_file_name = (
                     f"res_MICluEnHpp_3c_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
                 )
@@ -203,7 +285,9 @@ for scenario in scenarios:
                     scores = evaluate_clustering(data, labels_true, labels_pred)
                     list_ARI.append(scores["Adjusted Rand Index"])
                     list_NMI.append(scores["NMI"])
-                res_scores = pd.DataFrame({"ARI": list_ARI, "NMI": list_NMI})
+                    list_SS.append(scores["Silhouette"])
+                    list_P.append(scores["Purity"])
+                res_scores = pd.DataFrame({"ARI": list_ARI, "NMI": list_NMI, "Silhouette": list_SS, "Purity": list_P,})
                 res_scores_name = (
                     f"res_scores_MICluEnHpp_3c_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
                 )
@@ -215,11 +299,9 @@ for scenario in scenarios:
         for rho in rho_values:
             for tau in tau_values:
                 list_ARI = []
-                list_SS = []
-                list_CHI = []
-                list_DBI = []
-                list_P = []
                 list_NMI = []
+                list_SS = []
+                list_P = []
                 res_file_name = (
                     f"res_MICluEnHpp_3cib_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
                 )
@@ -233,7 +315,9 @@ for scenario in scenarios:
                     scores = evaluate_clustering(data, labels_true, labels_pred)
                     list_ARI.append(scores["Adjusted Rand Index"])
                     list_NMI.append(scores["NMI"])
-                res_scores = pd.DataFrame({"ARI": list_ARI, "NMI": list_NMI})
+                    list_SS.append(scores["Silhouette"])
+                    list_P.append(scores["Purity"])
+                res_scores = pd.DataFrame({"ARI": list_ARI, "NMI": list_NMI, "Silhouette": list_SS, "Purity": list_P,})
                 res_scores_name = (
                     f"res_scores_MICluEnHpp_3cib_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
                 )
@@ -247,11 +331,9 @@ for scenario in scenarios:
         for rho in rho_values:
             for tau in tau_values:
                 list_ARI = []
-                list_SS = []
-                list_CHI = []
-                list_DBI = []
-                list_P = []
                 list_NMI = []
+                list_SS = []
+                list_P = []
                 res_file_name = f"res_MICluEnN_3c_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
                 res = pd.read_csv(f"../results/{res_file_name}")
                 for s in tqdm(range(res.shape[1])):
@@ -263,7 +345,9 @@ for scenario in scenarios:
                     scores = evaluate_clustering(data, labels_true, labels_pred)
                     list_ARI.append(scores["Adjusted Rand Index"])
                     list_NMI.append(scores["NMI"])
-                res_scores = pd.DataFrame({"ARI": list_ARI, "NMI": list_NMI})
+                    list_SS.append(scores["Silhouette"])
+                    list_P.append(scores["Purity"])
+                res_scores = pd.DataFrame({"ARI": list_ARI, "NMI": list_NMI, "Silhouette": list_SS, "Purity": list_P,})
                 res_scores_name = (
                     f"res_scores_MICluEnN_3c_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
                 )
@@ -275,11 +359,9 @@ for scenario in scenarios:
         for rho in rho_values:
             for tau in tau_values:
                 list_ARI = []
-                list_SS = []
-                list_CHI = []
-                list_DBI = []
-                list_P = []
                 list_NMI = []
+                list_SS = []
+                list_P = []
                 res_file_name = (
                     f"res_MICluEnN_3cib_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
                 )
@@ -293,7 +375,9 @@ for scenario in scenarios:
                     scores = evaluate_clustering(data, labels_true, labels_pred)
                     list_ARI.append(scores["Adjusted Rand Index"])
                     list_NMI.append(scores["NMI"])
-                res_scores = pd.DataFrame({"ARI": list_ARI, "NMI": list_NMI})
+                    list_SS.append(scores["Silhouette"])
+                    list_P.append(scores["Purity"])
+                res_scores = pd.DataFrame({"ARI": list_ARI, "NMI": list_NMI, "Silhouette": list_SS, "Purity": list_P,})
                 res_scores_name = (
                     f"res_scores_MICluEnN_3cib_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
                 )
@@ -307,11 +391,9 @@ for scenario in scenarios:
         for rho in rho_values:
             for tau in tau_values:
                 list_ARI = []
-                list_SS = []
-                list_CHI = []
-                list_DBI = []
-                list_P = []
                 list_NMI = []
+                list_SS = []
+                list_P = []
                 res_file_name = (
                     f"res_MICluEnNMI_3c_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
                 )
@@ -325,7 +407,9 @@ for scenario in scenarios:
                     scores = evaluate_clustering(data, labels_true, labels_pred)
                     list_ARI.append(scores["Adjusted Rand Index"])
                     list_NMI.append(scores["NMI"])
-                res_scores = pd.DataFrame({"ARI": list_ARI, "NMI": list_NMI})
+                    list_SS.append(scores["Silhouette"])
+                    list_P.append(scores["Purity"])
+                res_scores = pd.DataFrame({"ARI": list_ARI, "NMI": list_NMI, "Silhouette": list_SS, "Purity": list_P,})
                 res_scores_name = (
                     f"res_scores_MICluEnNMI_3c_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
                 )
@@ -337,11 +421,9 @@ for scenario in scenarios:
         for rho in rho_values:
             for tau in tau_values:
                 list_ARI = []
-                list_SS = []
-                list_CHI = []
-                list_DBI = []
-                list_P = []
                 list_NMI = []
+                list_SS = []
+                list_P = []
                 res_file_name = (
                     f"res_MICluEnNMI_3cib_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
                 )
@@ -355,8 +437,18 @@ for scenario in scenarios:
                     scores = evaluate_clustering(data, labels_true, labels_pred)
                     list_ARI.append(scores["Adjusted Rand Index"])
                     list_NMI.append(scores["NMI"])
-                res_scores = pd.DataFrame({"ARI": list_ARI, "NMI": list_NMI})
+                    list_SS.append(scores["Silhouette"])
+                    list_P.append(scores["Purity"])
+                res_scores = pd.DataFrame({"ARI": list_ARI, "NMI": list_NMI, "Silhouette": list_SS, "Purity": list_P,})
                 res_scores_name = (
                     f"res_scores_MICluEnNMI_3cib_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
                 )
                 res_scores.to_csv(f"../results/{res_scores_name}")
+
+
+for scenario in scenarios:
+    for n in n_values:
+        for rho in rho_values:
+            for tau in tau_values:
+                save_paired_ttests("3c", n, rho, tau, scenario)
+                save_paired_ttests("3cib", n, rho, tau, scenario)

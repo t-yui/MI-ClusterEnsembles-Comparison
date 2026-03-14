@@ -18,6 +18,7 @@ from modules import (
     evaluate_clustering,
     eval_scores,
     d_V,
+    paired_ttest_between_methods,
 )
 
 
@@ -32,7 +33,40 @@ def setting_of_simulation():
 
 output = True
 N, Ks, DIM, STD_DEVs, n_sim = setting_of_simulation()
+metrics_to_use = ["ARI", "NMI", "Silhouette", "Purity"]
+methods = ["NMF", "AClu", "GNMI"]
 
+def save_scores(list_ARI, list_NMI, list_SS, list_P, outpath):
+    res_scores = pd.DataFrame(
+        {
+            "ARI": list_ARI,
+            "NMI": list_NMI,
+            "Silhouette": list_SS,
+            "Purity": list_P,
+        }
+    )
+    print(res_scores.mean())
+    res_scores.to_csv(outpath, index=False)
+
+
+def save_paired_ttests(prefix, n, std_dev):
+    rows = []
+    for metric in metrics_to_use:
+        score_df = pd.DataFrame(
+            {
+                method: pd.read_csv(
+                    f"../results/{prefix}_n{n}_STDDEV_{std_dev}_methname{method}.csv"
+                )[metric]
+                for method in methods
+            }
+        )
+        res = paired_ttest_between_methods(score_df)
+        res.insert(0, "metric", metric)
+        rows.append(res)
+    pd.concat(rows, ignore_index=True).to_csv(
+        f"../results/paired_ttest_{prefix}_n{n}_STDDEV_{std_dev}.csv",
+        index=False,
+    )
 
 # instability
 ## class-balanced scenarios
@@ -66,6 +100,8 @@ for K in Ks:
         methname = "NMF"
         list_ARI = []
         list_NMI = []
+        list_SS = []
+        list_P = []
         for i in tqdm(range(n_sim)):
             data, labels = gen_data(N, K, DIM, STD_DEV, random_state=i)
             labels_pred, labels_list = ensemble_clustering_NMF_(
@@ -74,10 +110,14 @@ for K in Ks:
             scores = evaluate_clustering(data, labels, labels_pred)
             list_ARI.append(scores["Adjusted Rand Index"])
             list_NMI.append(scores["NMI"])
+            list_SS.append(scores["Silhouette"])
+            list_P.append(scores["Purity"])
         res_scores = pd.DataFrame(
             {
                 "ARI": list_ARI,
                 "NMI": list_NMI,
+                "SS": list_SS,
+                "P": list_P,
             }
         )
         print(res_scores.mean())
@@ -95,6 +135,8 @@ for K in Ks:
         methname = "NMF"
         list_ARI = []
         list_NMI = []
+        list_SS = []
+        list_P = []
         for i in tqdm(range(n_sim)):
             data, labels = gen_data_imbalanced(N, K, DIM, STD_DEV, random_state=i)
             labels_pred, labels_list = ensemble_clustering_NMF_(
@@ -103,10 +145,14 @@ for K in Ks:
             scores = evaluate_clustering(data, labels, labels_pred)
             list_ARI.append(scores["Adjusted Rand Index"])
             list_NMI.append(scores["NMI"])
+            list_SS.append(scores["Silhouette"])
+            list_P.append(scores["Purity"])
         res_scores = pd.DataFrame(
             {
                 "ARI": list_ARI,
                 "NMI": list_NMI,
+                "SS": list_SS,
+                "P": list_P,
             }
         )
         print(res_scores.mean())
@@ -126,6 +172,8 @@ for K in Ks:
         methname = "AClu"
         list_ARI = []
         list_NMI = []
+        list_SS = []
+        list_P = []
         for i in tqdm(range(n_sim)):
             data, labels = gen_data(N, K, DIM, STD_DEV, random_state=i)
             labels_pred, labels_list = ensemble_clustering_(
@@ -134,10 +182,14 @@ for K in Ks:
             scores = evaluate_clustering(data, labels, labels_pred)
             list_ARI.append(scores["Adjusted Rand Index"])
             list_NMI.append(scores["NMI"])
+            list_SS.append(scores["Silhouette"])
+            list_P.append(scores["Purity"])
         res_scores = pd.DataFrame(
             {
                 "ARI": list_ARI,
                 "NMI": list_NMI,
+                "SS": list_SS,
+                "P": list_P,
             }
         )
         print(res_scores.mean())
@@ -155,6 +207,8 @@ for K in Ks:
         methname = "AClu"
         list_ARI = []
         list_NMI = []
+        list_SS = []
+        list_P = []
         for i in tqdm(range(n_sim)):
             data, labels = gen_data_imbalanced(N, K, DIM, STD_DEV, random_state=i)
             labels_pred, labels_list = ensemble_clustering_(
@@ -163,10 +217,14 @@ for K in Ks:
             scores = evaluate_clustering(data, labels, labels_pred)
             list_ARI.append(scores["Adjusted Rand Index"])
             list_NMI.append(scores["NMI"])
+            list_SS.append(scores["Silhouette"])
+            list_P.append(scores["Purity"])
         res_scores = pd.DataFrame(
             {
                 "ARI": list_ARI,
                 "NMI": list_NMI,
+                "SS": list_SS,
+                "P": list_P,
             }
         )
         print(res_scores.mean())
@@ -186,6 +244,8 @@ for K in Ks:
         methname = "GNMI"
         list_ARI = []
         list_NMI = []
+        list_SS = []
+        list_P = []
         for i in tqdm(range(n_sim)):
             data, labels = gen_data(N, K, DIM, STD_DEV, random_state=i)
             labels_pred, labels_list = ensemble_clustering_nmi_(
@@ -194,10 +254,14 @@ for K in Ks:
             scores = evaluate_clustering(data, labels, labels_pred)
             list_ARI.append(scores["Adjusted Rand Index"])
             list_NMI.append(scores["NMI"])
+            list_SS.append(scores["Silhouette"])
+            list_P.append(scores["Purity"])
         res_scores = pd.DataFrame(
             {
                 "ARI": list_ARI,
                 "NMI": list_NMI,
+                "SS": list_SS,
+                "P": list_P,
             }
         )
         print(res_scores.mean())
@@ -215,6 +279,8 @@ for K in Ks:
         methname = "GNMI"
         list_ARI = []
         list_NMI = []
+        list_SS = []
+        list_P = []
         for i in tqdm(range(n_sim)):
             data, labels = gen_data_imbalanced(N, K, DIM, STD_DEV, random_state=i)
             labels_pred, labels_list = ensemble_clustering_nmi_(
@@ -223,10 +289,14 @@ for K in Ks:
             scores = evaluate_clustering(data, labels, labels_pred)
             list_ARI.append(scores["Adjusted Rand Index"])
             list_NMI.append(scores["NMI"])
+            list_SS.append(scores["Silhouette"])
+            list_P.append(scores["Purity"])
         res_scores = pd.DataFrame(
             {
                 "ARI": list_ARI,
                 "NMI": list_NMI,
+                "SS": list_SS,
+                "P": list_P,
             }
         )
         print(res_scores.mean())
@@ -236,3 +306,9 @@ for K in Ks:
             ),
             index=False,
         )
+
+
+for K in Ks:
+    for STD_DEV in STD_DEVs:
+        save_paired_ttests("balanced", N * K, STD_DEV)
+        save_paired_ttests("imbalanced", N * K, STD_DEV)

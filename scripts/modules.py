@@ -5,12 +5,17 @@ import os
 from tqdm import tqdm
 from sklearn.cluster import KMeans
 from sklearn import preprocessing, metrics
-from sklearn.metrics import normalized_mutual_info_score, confusion_matrix
-from scipy.stats import mode
+from sklearn.metrics import (
+    normalized_mutual_info_score,
+    confusion_matrix,
+    silhouette_score,
+)
+from scipy.stats import mode, ttest_rel
 import scipy.spatial.distance as ssd
 from scipy.spatial import distance
 from scipy.cluster.hierarchy import linkage, dendrogram, fcluster
 from scipy.special import comb
+from itertools import combinations
 
 
 # data generation for experiment 1
@@ -65,10 +70,51 @@ def nmi(true_labels, pred_labels):
     return normalized_mutual_info_score(true_labels, pred_labels, average_method="max")
 
 
+def purity_score(labels_true, labels_pred):
+    cm = confusion_matrix(labels_true, labels_pred)
+    return np.sum(np.max(cm, axis=0)) / np.sum(cm)
+
+
+def safe_silhouette_score(data, labels_pred):
+    if len(np.unique(labels_pred)) < 2:
+        return np.nan
+    try:
+        return silhouette_score(np.asarray(data), labels_pred)
+    except:
+        return np.nan
+
+
 def evaluate_clustering(data, labels_true, labels_pred):
     ari = metrics.adjusted_rand_score(labels_true, labels_pred)
     nmi_score = nmi(labels_true, labels_pred)
-    return {"Adjusted Rand Index": ari, "NMI": nmi_score}
+    sil_score = safe_silhouette_score(data, labels_pred)
+    purity = purity_score(labels_true, labels_pred)
+    return {
+        "Adjusted Rand Index": ari,
+        "NMI": nmi_score,
+        "Silhouette": sil_score,
+        "Purity": purity,
+    }
+
+
+def paired_ttest_between_methods(score_df):
+    rows = []
+    for method_1, method_2 in combinations(score_df.columns, 2):
+        tmp = score_df[[method_1, method_2]].dropna()
+        if len(tmp) < 2:
+            t_stat, p_value = np.nan, np.nan
+        else:
+            t_stat, p_value = ttest_rel(tmp[method_1], tmp[method_2])
+        rows.append(
+            {
+                "method_1": method_1,
+                "method_2": method_2,
+                "n_pairs": len(tmp),
+                "t_stat": t_stat,
+                "p_value": p_value,
+            }
+        )
+    return pd.DataFrame(rows)
 
 
 # distance for cluster ensemble
@@ -151,6 +197,27 @@ def get_km_(k, X):
     km = KMeans(n_clusters=k, init="k-means++")
     km.fit(X)
     return km
+
+
+def get_km(k, X, random_state):
+    km = KMeans(n_clusters=k, init="random", random_state=random_state)
+    km.fit(X)
+    return km
+
+
+def apply_kmeans_clustering_(data, n_clst=2):
+    scaler = preprocessing.StandardScaler()
+    data_scaled = scaler.fit_transform(data)
+    km = get_km_(k=n_clst, X=data_scaled)
+    labels = km.predict(data_scaled)
+    return labels
+
+def apply_kmeans_clustering(data, n_clst=2, random_state=1):
+    scaler = preprocessing.StandardScaler()
+    data_scaled = scaler.fit_transform(data)
+    km = get_km(k=n_clst, X=data_scaled, random_state=random_state)
+    labels = km.predict(data_scaled)
+    return labels
 
 
 def ensemble_clustering_(
@@ -335,6 +402,23 @@ def apply_each_clustering_(df_imp, cls_times, n_clst=3):
     return cluster_labels
 
 
+def apply_each_clustering(df_imp,cls_times,n_clst=3):
+    cluster_labels = []
+    for l in range(cls_times):
+        data_tmp = df_imp.loc[df_imp[".imp"]==l+1,:].reset_index(drop=True)
+        data_tmp = data_tmp.iloc[:,3:]
+        scaler = preprocessing.StandardScaler()
+        scaler.fit(data_tmp)
+        data_tmp = pd.DataFrame(scaler.transform(data_tmp))
+        try:
+            km = get_km(k=n_clst, X=data_tmp, random_state=l)
+            y_pred = km.predict(data_tmp)
+            cluster_labels.append(y_pred)
+        except:
+            pass
+    return cluster_labels
+
+
 def apply_mi_ensemble_clustering(res, n_clst=3):
     """AClu ensemble algorithm"""
     n = res.shape[0]
@@ -398,3 +482,20 @@ def apply_mi_ensemble_clustering_nmi(res, n_clst=3):
             best_bc = bc.copy()
     labels = greedy_algorithm_nmi(best_bc, y_preds, n_clst)
     return labels
+
+
+# complete case analysis
+def exec_clustering(filepath):
+    X = pd.read_csv(filepath, index_col=0)
+    original_index = X.index
+    X_complete = X.dropna()
+    if len(X_complete) < k:
+        labels = np.full(shape=len(original_index), fill_value=np.nan)
+    else:
+        X_scaled = scale(X_complete)
+        kmeans = KMeans(n_clusters=k, init="k-means++", n_init=10)
+        kmeans.fit(X_scaled)
+        labels = np.full(shape=len(original_index), fill_value=-1)
+        labels[original_index.isin(X_complete.index)] = kmeans.labels_
+    return labels
+
