@@ -174,7 +174,7 @@ for scenario in scenarios:
                     try:
                         res_file_name = f"res_baseKmeanspp_3cib_n{n}_rho{rho}_tau{tau}_{scenario}_{s}.csv"
                         res_path = (
-                            f"../results_audigier_base_clustering/{res_file_name}"
+                            f"../results/{res_file_name}"
                         )
                         res_bc = pd.read_csv(res_path)
                         labels = apply_mi_ensemble_clustering_nmi(res_bc, n_clst=3)
