@@ -33,20 +33,8 @@ def setting_of_simulation():
 
 output = True
 N, Ks, DIM, STD_DEVs, n_sim = setting_of_simulation()
-metrics_to_use = ["ARI", "NMI", "Silhouette", "Purity"]
+metrics_to_use = ["ARI", "NMI", "SS", "P"]
 methods = ["NMF", "AClu", "GNMI"]
-
-def save_scores(list_ARI, list_NMI, list_SS, list_P, outpath):
-    res_scores = pd.DataFrame(
-        {
-            "ARI": list_ARI,
-            "NMI": list_NMI,
-            "Silhouette": list_SS,
-            "Purity": list_P,
-        }
-    )
-    print(res_scores.mean())
-    res_scores.to_csv(outpath, index=False)
 
 
 def save_paired_ttests(prefix, n, std_dev):
