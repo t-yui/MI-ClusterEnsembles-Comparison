@@ -177,7 +177,7 @@ for scenario in scenarios:
                             f"../results/{res_file_name}"
                         )
                         res_bc = pd.read_csv(res_path)
-                        labels = apply_mi_ensemble_clustering_nmi(res_bc, n_clst=3)
+                        labels = apply_mi_ensemble_clustering(res_bc, n_clst=3)
                         cluster_labels.append(labels)
                     except:
                         cluster_labels.append(np.full(n, np.nan))
