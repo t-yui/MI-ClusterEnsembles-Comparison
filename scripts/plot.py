@@ -1,35 +1,33 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from matplotlib.patches import Patch
-from tqdm import tqdm
 import seaborn as sns
 
 sns.set_style("whitegrid")
 plt.rcParams["font.family"] = "Times New Roman"
 
-
-metrics_to_plot = ["ARI", "NMI", "Silhouette", "Purity"]
+# common settings
+metrics_to_plot = ["ARI", "NMI", "SS", "P"]
 
 metric_labels = {
     "ARI": "ARI",
     "NMI": "NMI",
-    "Silhouette": "Silhouette score",
-    "Purity": "Purity",
+    "SS": "Silhouette score",
+    "P": "Purity",
 }
 
 metric_ylims = {
     "ARI": (-0.1, 1.05),
     "NMI": (-0.1, 1.05),
-    "Silhouette": (-1.05, 1.05),
-    "Purity": (-0.1, 1.05),
+    "SS": (-1.05, 1.05),
+    "P": (-0.1, 1.05),
 }
 
 metric_yticks = {
     "ARI": [0, 0.25, 0.5, 0.75, 1],
     "NMI": [0, 0.25, 0.5, 0.75, 1],
-    "Silhouette": [-1, -0.5, 0, 0.5, 1],
-    "Purity": [0, 0.25, 0.5, 0.75, 1],
+    "SS": [-1, -0.5, 0, 0.5, 1],
+    "P": [0, 0.25, 0.5, 0.75, 1],
 }
 
 method_rename = {
@@ -40,10 +38,79 @@ method_rename = {
     "MICluEnN": "MI-NMF",
 }
 
+# parameters: experiment 1
+Ks = [10, 20, 40]
+N = 3
+exp1_scenarios = ["balanced", "imbalanced"]
+std_devs = [1, 1.5, 2, 2.5, 3, 3.5, 4]
+methods = ["GNMI", "NMF", "AClu"]
+
+# parameters: experiment 2
+n_values = [30, 60, 120]
+rho_values = [0.3, 0.6]
+tau_values = [0.1, 0.3, 0.5]
+exp2_scenarios = ["MCAR", "MAR"]
+
+# color palettes
+exp1_hue_order = ["GNMI", "NMF", "AClu"]
+exp1_palette = dict(
+    zip(exp1_hue_order, sns.color_palette("Set2", len(exp1_hue_order)))
+)
+
+exp2_hue_order = [
+    "k-means-full",
+    "k-means-CCA",
+    "k-pod",
+    "MI-GNMI",
+    "MI-NMF",
+    "MI-AClu",
+]
+exp2_palette = dict(
+    zip(exp2_hue_order, sns.color_palette("Set2", len(exp2_hue_order)))
+)
+
+BOXPLOT_STYLE = dict(
+    linewidth=4,
+    fliersize=10,
+    saturation=1,
+    boxprops=dict(edgecolor="black"),
+    whiskerprops=dict(color="black", linewidth=3),
+    capprops=dict(color="black", linewidth=3),
+    medianprops=dict(color="black", linewidth=4),
+)
+
+LINE_STYLE = dict(
+    marker="o",
+    linestyle="dashed",
+    linewidth=2,
+    markersize=12,
+    color="black",
+    label="Instability",
+)
+
+
+def add_combined_legend(ax1, ax2, fontsize=32):
+    handles1, labels1 = ax1.get_legend_handles_labels()
+    handles2, labels2 = ax2.get_legend_handles_labels()
+
+    if ax1.legend_ is not None:
+        ax1.legend_.remove()
+
+    ax1.legend(
+        handles1 + handles2,
+        labels1 + labels2,
+        loc="upper left",
+        bbox_to_anchor=(1.1, 1),
+        fontsize=fontsize,
+    )
+
 
 def get_stabs(stab_file, n, rho, scenario):
     stab = pd.read_csv(stab_file, index_col=0).iloc[:, 0]
-    return [stab.loc[f"n{n}_rho{rho}_tau{tau}_{scenario}"] for tau in tau_values]
+    return np.array(
+        [stab.loc[f"n{n}_rho{rho}_tau{tau}_{scenario}"] for tau in tau_values],
+        dtype=float,
+    )
 
 
 def load_exp1_metric(K, scenario, metric):
@@ -54,7 +121,11 @@ def load_exp1_metric(K, scenario, metric):
             vals = pd.read_csv(file_name)[metric]
             frames.append(
                 pd.DataFrame(
-                    {"Method": methname, "Score": vals, "sigma": STD_DEV}
+                    {
+                        "Method": methname,
+                        "Score": vals,
+                        "sigma": STD_DEV,
+                    }
                 )
             )
     return pd.concat(frames, ignore_index=True)
@@ -73,8 +144,12 @@ def load_exp2_metric(prefix, n, rho_value, scenario, metric):
                 }
             )
         )
+
         for method in ["ccakmeanspp", "kpod", "MICluEnNMI", "MICluEnN", "MICluEnHpp"]:
-            file_name = f"../results/res_scores_{method}_{prefix}_n{n}_rho{rho_value}_tau{tau}_{scenario}.csv"
+            file_name = (
+                f"../results/res_scores_{method}_{prefix}_n{n}_rho{rho_value}"
+                f"_tau{tau}_{scenario}.csv"
+            )
             frames.append(
                 pd.DataFrame(
                     {
@@ -84,32 +159,26 @@ def load_exp2_metric(prefix, n, rho_value, scenario, metric):
                     }
                 )
             )
+
     df = pd.concat(frames, ignore_index=True)
     df["Method"] = df["Method"].replace(method_rename)
     return df
 
 
-# experiment 1
-## parameters
-Ks = [10, 20, 40]
-N = 3
-scenarios = ["balanced", "imbalanced"]
-std_devs = [1, 1.5, 2, 2.5, 3, 3.5, 4]
-methods = ["GNMI", "NMF", "AClu"]
-hatches = ["-", "+", "x"]
-colors = ["#000000"] * 100
-
-# plot figure 1
+# experiment 1 -> figure 1
 for metric in metrics_to_plot:
     fig, axes = plt.subplots(
-        nrows=len(Ks), ncols=len(scenarios), figsize=(24 * 2, 10 * 2)
+        nrows=len(Ks),
+        ncols=len(exp1_scenarios),
+        figsize=(24 * 2, 10 * 2),
     )
+
     for i, K in enumerate(Ks):
-        for j, scenario in enumerate(scenarios):
+        for j, scenario in enumerate(exp1_scenarios):
             score_data = load_exp1_metric(K, scenario, metric)
             stabs = pd.read_csv(f"../results/stabs_{scenario}.csv").values[
-                i * 7 : (i + 1) * 7
-            ]
+                i * len(std_devs) : (i + 1) * len(std_devs)
+            ].ravel()
 
             ax1 = axes[i, j]
             sns.boxplot(
@@ -117,366 +186,117 @@ for metric in metrics_to_plot:
                 y="Score",
                 hue="Method",
                 data=score_data,
-                palette=colors,
-                linewidth=2 * 2,
-                fliersize=5 * 2,
+                order=std_devs,
+                hue_order=exp1_hue_order,
+                palette=exp1_palette,
                 ax=ax1,
+                **BOXPLOT_STYLE,
             )
 
-            for k, artist in enumerate(ax1.artists):
-                col = colors[k % len(colors)]
-                artist.set_edgecolor(col)
-                artist.set_facecolor("none")
-                artist.set_hatch(hatches[k % len(hatches)])
-
-            ax1.set_xlabel("$\\sigma^2$", fontsize=18 * 2)
-            ax1.set_ylabel(metric_labels[metric], fontsize=20 * 2)
+            ax1.set_xlabel("$\\sigma^2$", fontsize=36)
+            ax1.set_ylabel(metric_labels[metric], fontsize=40)
             ax1.set_xticks(range(len(std_devs)))
-            ax1.set_xticklabels([str(sd) for sd in std_devs], fontsize=18 * 2)
+            ax1.set_xticklabels([str(sd) for sd in std_devs], fontsize=36)
             ax1.set_yticks(metric_yticks[metric])
             ax1.set_ylim(*metric_ylims[metric])
-            ax1.tick_params(axis="y", labelcolor="black", labelsize=18 * 2)
-            ax1.set_title(r"$n = {0}$, {1}".format(N * K, scenario), fontsize=20 * 2)
+            ax1.tick_params(axis="y", labelcolor="black", labelsize=36)
+            ax1.set_title(r"$n = {0}$, {1}".format(N * K, scenario), fontsize=40)
 
             ax2 = ax1.twinx()
-            ax2.plot(
-                stabs,
-                marker="o",
-                linestyle="dashed",
-                linewidth=1 * 2,
-                markersize=6 * 2,
-                label="Instability",
-                color="black",
-            )
-            ax2.set_ylabel("Instability", fontsize=20 * 2, color="black")
+            ax2.plot(range(len(std_devs)), stabs, **LINE_STYLE)
+            ax2.set_ylabel("Instability", fontsize=40, color="black")
             ax2.set_yticks([0, 0.25, 0.5, 0.75, 1])
-            ax2.tick_params(axis="y", labelcolor="black", labelsize=18 * 2)
+            ax2.tick_params(axis="y", labelcolor="black", labelsize=36)
             ax2.set_ylim(-0.1, 1.05)
 
-            legend_patches = [
-                Patch(
-                    facecolor="white",
-                    edgecolor=colors[k],
-                    hatch=hatches[k % len(hatches)],
-                    label=methname,
-                )
-                for k, methname in enumerate(score_data["Method"].unique())
-            ]
-            lines2, labels2 = ax2.get_legend_handles_labels()
-            ax1.legend(
-                handles=legend_patches + lines2,
-                labels=[lp.get_label() for lp in legend_patches] + labels2,
-                loc="upper left",
-                bbox_to_anchor=(1.1, 1),
-                fontsize=16 * 2,
-            )
+            add_combined_legend(ax1, ax2, fontsize=32)
 
     plt.tight_layout()
-    plt.savefig(f"../plots/figure_1_{metric}.eps")
-    plt.clf()
-    plt.close()
+    plt.savefig(f"../plots/figure_1_{metric}.eps", bbox_inches="tight")
+    plt.savefig(f"../plots/figure_1_{metric}.png", bbox_inches="tight")
+    plt.close(fig)
 
 
-# experiment 2
-## parameters
-n_values = [30, 60, 120]
-rho_values = [0.3, 0.6]
-tau_values = [0.1, 0.3, 0.5]
-scenarios = ["MCAR", "MAR"]
-S = 200
-hatches = ["/", "\\", "|", "-", "+", "x"]
-colors = ["#000000"] * 100
+# experiment 2 -> figures 2-5
+def plot_exp2_family(prefix, stab_file, first_fig_no):
+    for metric in metrics_to_plot:
+        if metric == "SS":
+            metric_full = "Silhouette"
+        elif metric == "P":
+            metric_full = "Purity"
+        else:
+            metric_full = metric
+        nfig = first_fig_no
 
-# plot figure 2 and 3
-for metric in metrics_to_plot:
-    score_data = load_exp2_metric("3c", n, rho_value, scenario, metric)
-    stabs_tmp = get_stabs("../results/res_stability_3c.csv", n, rho_value, scenario)
-    #stab_df = pd.DataFrame(pd.read_csv("../results/res_stability_3c.csv").values)
-    nfig = 2
-    for rho_index, rho_value in enumerate(rho_values):
-        fig, axes = plt.subplots(
-            nrows=len(n_values), ncols=len(scenarios), figsize=(24 * 2, 10 * 2)
-        )
-        for n_index, n in enumerate(n_values):
-            for scenario_index, scenario in enumerate(scenarios):
-                ari_data = pd.DataFrame()
-                for tau in tau_values:
-                    tau_value = tau
-                    kmeans_file = f"res_scores_kmeans_3c_n{n}_rho{rho_value}.csv"
-                    kmeans_ari = pd.read_csv(f"../results/{kmeans_file}")["ARI"]
-                    ari_data = ari_data.append(
-                        pd.DataFrame(
-                            {"Method": "k-means-full", "ARI": kmeans_ari, "tau": tau_value}
-                        )
+        for rho_value in rho_values:
+            fig, axes = plt.subplots(
+                nrows=len(n_values),
+                ncols=len(exp2_scenarios),
+                figsize=(24 * 2, 10 * 2),
+            )
+
+            for n_index, n in enumerate(n_values):
+                for scenario_index, scenario in enumerate(exp2_scenarios):
+                    score_data = load_exp2_metric(prefix, n, rho_value, scenario, metric_full)
+                    stabs_tmp = get_stabs(stab_file, n, rho_value, scenario)
+
+                    ax1 = axes[n_index, scenario_index]
+                    sns.boxplot(
+                        x="tau",
+                        y="Score",
+                        hue="Method",
+                        data=score_data,
+                        order=tau_values,
+                        hue_order=exp2_hue_order,
+                        palette=exp2_palette,
+                        ax=ax1,
+                        **BOXPLOT_STYLE,
                     )
 
-                    for method in [
-                        "ccakmeanspp",
-                        "kpod",
-                        "MICluEnNMI",
-                        "MICluEnN",
-                        "MICluEnHpp",
-                    ]:
-                        file_name = f"res_scores_{method}_3c_n{n}_rho{rho_value}_tau{tau_value}_{scenario}.csv"
-                        method_ari = pd.read_csv(f"../results/{file_name}")["ARI"]
-                        ari_data = ari_data.append(
-                            pd.DataFrame(
-                                {"Method": method, "ARI": method_ari, "tau": tau_value}
-                            )
-                        )
-
-                method_rename = {
-                    "ccakmeanspp": "k-means-CCA",
-                    "kpod": "k-pod",
-                    "MICluEnHpp": "MI-AClu",
-                    "MICluEnNMI": "MI-GNMI",
-                    "MICluEnN": "MI-NMF",
-                }
-                ari_data["Method"] = ari_data["Method"].replace(method_rename)
-
-                ax1 = axes[n_index, scenario_index]
-                sns.boxplot(
-                    x="tau",
-                    y="Score",
-                    hue="Method",
-                    data=score_data,
-                    linewidth=2 * 2,
-                    fliersize=5 * 2,
-                    ax=ax1,
-                )
-                ax1.set_ylabel(metric_labels[metric], fontsize=20 * 2)
-                ax1.set_yticks(metric_yticks[metric])
-                ax1.set_ylim(*metric_ylims[metric])
-                # sns_plot = sns.boxplot(
-                #     x="tau",
-                #     y="ARI",
-                #     hue="Method",
-                #     data=ari_data,
-                #     linewidth=2 * 2,
-                #     fliersize=5 * 2,
-                #     ax=ax1,
-                # )
-                # ax1.set_xlabel("", fontsize=18 * 2)
-                # ax1.set_ylabel("ARI", fontsize=20 * 2)
-                # ax1.set_xticks([0, 1, 2])
-                # ax1.set_yticks([0, 0.25, 0.5, 0.75, 1])
-                # ax1.set_ylim(-0.1, 1.05)
-                ax1.tick_params(axis="y", labelcolor="black", labelsize=18 * 2)
-                ax1.set_xticklabels(
-                    [r"$\tau=0.1$", r"$\tau=0.3$", r"$\tau=0.5$"], fontsize=20 * 2
-                )
-                ax1.set_title(
-                    r"$n = {0}$, ".format(n)
-                    + r"$\rho = {0}$, ".format(rho_value)
-                    + f"{scenario}",
-                    fontsize=20 * 2,
-                )
-                ax1.set_ylim(-0.1, 1.05)
-
-                # ax2 = ax1.twinx()
-                # ax1.plot(
-                #     stabs_tmp,
-                #     marker="o",
-                #     linestyle="dashed",
-                #     linewidth=1 * 2,
-                #     markersize=6 * 2,
-                #     label="instability",
-                #     color="black",
-                # )
-                ax2 = ax1.twinx()
-                ax2.plot(
-                    stabs_tmp,
-                    marker="o",
-                    linestyle="dashed",
-                    linewidth=1 * 2,
-                    markersize=6 * 2,
-                    label="instability",
-                    color="black",
-                )
-                ax2.set_ylabel("Instability", fontsize=20 * 2, color="black")
-                ax2.set_yticks([0, 0.25, 0.5, 0.75, 1])
-                ax2.tick_params(axis="y", labelcolor="black", labelsize=18 * 2)
-                ax2.set_ylim(-0.1, 1.05)
-
-                for i, artist in enumerate(ax1.artists):
-                    col = colors[i % len(colors)]
-                    artist.set_edgecolor(col)
-                    artist.set_facecolor("none")
-                    artist.set_hatch(hatches[i % len(hatches)])
-
-                legend_patches = [
-                    Patch(
-                        facecolor="white",
-                        edgecolor=colors[i],
-                        hatch=hatches[i % len(hatches)],
-                        label=method,
+                    ax1.set_xlabel("", fontsize=36)
+                    ax1.set_ylabel(metric_labels[metric], fontsize=40)
+                    ax1.set_xticks(range(len(tau_values)))
+                    ax1.set_xticklabels(
+                        [r"$\tau=0.1$", r"$\tau=0.3$", r"$\tau=0.5$"],
+                        fontsize=40,
                     )
-                    for i, method in enumerate(ari_data["Method"].unique())
-                ]
-                lines2, labels2 = ax1.get_legend_handles_labels()
-                ax1.legend(
-                    handles=legend_patches + [lines2[0]],
-                    labels=[lp.get_label() for lp in legend_patches] + [labels2[0]],
-                    loc="upper left",
-                    bbox_to_anchor=(1.1, 1),
-                    fontsize=32,
-                )
-
-        plt.tight_layout()
-        #plt.savefig("../plots/figure_{0}.eps".format(nfig))
-        plt.savefig(f"../plots/figure_{nfig}_{metric}.eps")
-        nfig += 1
-        plt.show()
-        plt.clf()
-        plt.close()
-
-# plot figure 4 and 5
-for metric in metrics_to_plot:
-    score_data = load_exp2_metric("3c", n, rho_value, scenario, metric)
-    stabs_tmp = get_stabs("../results/res_stability_3cib.csv", n, rho_value, scenario)
-    #stab_df = pd.DataFrame(pd.read_csv("../results/res_stability_3cib.csv").values)
-    nfig = 4
-    for rho_index, rho_value in enumerate(rho_values):
-        fig, axes = plt.subplots(
-            nrows=len(n_values), ncols=len(scenarios), figsize=(24 * 2, 10 * 2)
-        )
-        for n_index, n in enumerate(n_values):
-            for scenario_index, scenario in enumerate(scenarios):
-                ari_data = pd.DataFrame()
-                for tau in tau_values:
-                    tau_value = tau
-                    kmeans_file = f"res_scores_kmeans_3cib_n{n}_rho{rho_value}.csv"
-                    kmeans_ari = pd.read_csv(f"../results/{kmeans_file}")["ARI"]
-                    ari_data = ari_data.append(
-                        pd.DataFrame(
-                            {"Method": "k-means-full", "ARI": kmeans_ari, "tau": tau_value}
-                        )
+                    ax1.set_yticks(metric_yticks[metric])
+                    ax1.set_ylim(*metric_ylims[metric])
+                    ax1.tick_params(axis="y", labelcolor="black", labelsize=36)
+                    ax1.set_title(
+                        r"$n = {0}$, ".format(n)
+                        + r"$\rho = {0}$, ".format(rho_value)
+                        + f"{scenario}",
+                        fontsize=40,
                     )
 
-                    for method in [
-                        "ccakmeanspp",
-                        "kpod",
-                        "MICluEnNMI",
-                        "MICluEnN",
-                        "MICluEnHpp",
-                    ]:
-                        file_name = f"res_scores_{method}_3cib_n{n}_rho{rho_value}_tau{tau_value}_{scenario}.csv"
-                        method_ari = pd.read_csv(f"../results/{file_name}")["ARI"]
-                        ari_data = ari_data.append(
-                            pd.DataFrame(
-                                {"Method": method, "ARI": method_ari, "tau": tau_value}
-                            )
-                        )
+                    ax2 = ax1.twinx()
+                    ax2.plot(range(len(tau_values)), stabs_tmp, **LINE_STYLE)
+                    ax2.set_ylabel("Instability", fontsize=40, color="black")
+                    ax2.set_yticks([0, 0.25, 0.5, 0.75, 1])
+                    ax2.tick_params(axis="y", labelcolor="black", labelsize=36)
+                    ax2.set_ylim(-0.1, 1.05)
 
-                method_rename = {
-                    "ccakmeanspp": "k-means-CCA",
-                    "kpod": "k-pod",
-                    "MICluEnHpp": "MI-AClu",
-                    "MICluEnNMI": "MI-GNMI",
-                    "MICluEnN": "MI-NMF",
-                }
-                ari_data["Method"] = ari_data["Method"].replace(method_rename)
+                    add_combined_legend(ax1, ax2, fontsize=32)
 
-                ax1 = axes[n_index, scenario_index]
-                # sns_plot = sns.boxplot(
-                #     x="tau",
-                #     y="ARI",
-                #     hue="Method",
-                #     data=ari_data,
-                #     linewidth=2 * 2,
-                #     fliersize=5 * 2,
-                #     ax=ax1,
-                # )
-                # ax1.set_xlabel("", fontsize=18 * 2)
-                # ax1.set_ylabel("ARI", fontsize=20 * 2)
-                # ax1.set_xticks([0, 1, 2])
-                # ax1.set_yticks([0, 0.25, 0.5, 0.75, 1])
-                # ax1.set_ylim(-0.1, 1.05)
-                sns.boxplot(
-                    x="tau",
-                    y="Score",
-                    hue="Method",
-                    data=score_data,
-                    linewidth=2 * 2,
-                    fliersize=5 * 2,
-                    ax=ax1,
-                )
-                ax1.set_ylabel(metric_labels[metric], fontsize=20 * 2)
-                ax1.set_yticks(metric_yticks[metric])
-                ax1.set_ylim(*metric_ylims[metric])
-                ax1.tick_params(axis="y", labelcolor="black", labelsize=18 * 2)
-                ax1.set_xticklabels(
-                    [r"$\tau=0.1$", r"$\tau=0.3$", r"$\tau=0.5$"], fontsize=20 * 2
-                )
-                ax1.set_title(
-                    r"$n = {0}$, ".format(n)
-                    + r"$\rho = {0}$, ".format(rho_value)
-                    + f"{scenario}",
-                    fontsize=20 * 2,
-                )
-                ax1.set_ylim(-0.1, 1.05)
+            plt.tight_layout()
+            plt.savefig(f"../plots/figure_{nfig}_{metric}.eps", bbox_inches="tight")
+            plt.savefig(f"../plots/figure_{nfig}_{metric}.png", bbox_inches="tight")
+            plt.close(fig)
 
-                # ax2 = ax1.twinx()
-                # ax1.plot(
-                #     stabs_tmp,
-                #     marker="o",
-                #     linestyle="dashed",
-                #     linewidth=1 * 2,
-                #     markersize=6 * 2,
-                #     label="instability",
-                #     color="black",
-                # )
-                ax2 = ax1.twinx()
-                ax2.plot(
-                    stabs_tmp,
-                    marker="o",
-                    linestyle="dashed",
-                    linewidth=1 * 2,
-                    markersize=6 * 2,
-                    label="instability",
-                    color="black",
-                )
-                ax2.set_ylabel("Instability", fontsize=20 * 2, color="black")
-                ax2.set_yticks([0, 0.25, 0.5, 0.75, 1])
-                ax2.tick_params(axis="y", labelcolor="black", labelsize=18 * 2)
-                ax2.set_ylim(-0.1, 1.05)
+            nfig += 1
 
-                for i, artist in enumerate(ax1.artists):
-                    col = colors[i % len(colors)]
-                    artist.set_edgecolor(col)
-                    artist.set_facecolor("none")
-                    artist.set_hatch(hatches[i % len(hatches)])
 
-                legend_patches = [
-                    Patch(
-                        facecolor="white",
-                        edgecolor=colors[i],
-                        hatch=hatches[i % len(hatches)],
-                        label=method,
-                    )
-                    for i, method in enumerate(ari_data["Method"].unique())
-                ]
-                lines2, labels2 = ax1.get_legend_handles_labels()
-                ax1.legend(
-                    handles=legend_patches + [lines2[0]],
-                    labels=[lp.get_label() for lp in legend_patches] + [labels2[0]],
-                    loc="upper left",
-                    bbox_to_anchor=(1.1, 1),
-                    fontsize=32,
-                )
+# balanced scenario -> figure 2, 3
+plot_exp2_family("3c", "../results/res_stability_3c.csv", 2)
 
-        plt.tight_layout()
-        #plt.savefig("../plots/figure_{0}.eps".format(nfig))
-        plt.savefig(f"../plots/figure_{nfig}_{metric}.eps")
-        nfig += 1
-        plt.show()
-        plt.clf()
-        plt.close()
+# imbalanced scenario -> figure 4, 5
+plot_exp2_family("3cib", "../results/res_stability_3cib.csv", 4)
 
 
 # plot figure 6
-import preprocessing
-from modules import gen_data, get_km_, symmetric_nmf
+from sklearn import preprocessing
+from modules import gen_data_imbalanced, get_km_, symmetric_nmf, get_final_partition
 
 np.random.seed(10000)
 N = 3
@@ -489,7 +309,7 @@ n = N * K
 cM = np.zeros([n, n])
 y_preds = []
 for l in range(cls_times):
-    data, labels = gen_data(N, K, DIM, STD_DEV, random_state=l)
+    data, labels = gen_data_imbalanced(N, K, DIM, STD_DEV, random_state=l)
     data_tmp = data.copy()
     scaler = preprocessing.StandardScaler()
     scaler.fit(data_tmp)
@@ -503,20 +323,21 @@ for l in range(cls_times):
                 cM[i, j] += 1
 
 Q, S = symmetric_nmf(cM / cls_times, 3)
-labels = get_final_partition(Q)
+#labels = get_final_partition(Q)
 
 ## figure 6.1
 plt.figure(figsize=(10, 8))
-sns.heatmap(cM / cls_times, cmap="gray_r")
+sns.heatmap(cM / cls_times, cmap="coolwarm")
 plt.savefig("../plots/figure_6_1.eps")
-plt.show()
+plt.savefig("../plots/figure_6_1.png")
 plt.clf()
 plt.close()
 
 ## figure 6.2
 plt.figure(figsize=(10, 8))
-sns.heatmap(Q @ S @ Q.T, cmap="gray_r")
+sns.heatmap(Q @ S @ Q.T, cmap="coolwarm")
 plt.savefig("../plots/figure_6_2.eps")
-plt.show()
+plt.savefig("../plots/figure_6_2.png")
 plt.clf()
 plt.close()
+
