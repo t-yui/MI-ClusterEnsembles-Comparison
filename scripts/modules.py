@@ -432,8 +432,7 @@ def apply_mi_ensemble_clustering(res, n_clst=3):
     distMatrix = 1 - cM / (cls_times)
     distArray = ssd.squareform(distMatrix)
     clu = linkage(distArray, method="ward")
-    distance_threshold = clu[-3, 2]
-    hclu = fcluster(clu, t=distance_threshold, criterion="distance")
+    hclu = fcluster(clu, t=n_clst, criterion="maxclust")
     return hclu
 
 
