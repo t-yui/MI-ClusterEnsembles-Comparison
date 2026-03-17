@@ -44,5 +44,5 @@ $ python3 experiment_2_5_evaluation.py
 ## plot results
 
 ```bash
-$ python3 plot.py
+$ python3 experiment_plot.py
 ```
