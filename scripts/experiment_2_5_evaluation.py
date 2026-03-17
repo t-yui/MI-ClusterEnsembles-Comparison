@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+from scipy.stats import friedmanchisquare
 from modules import evaluate_clustering, paired_ttest_between_methods
 
 
@@ -76,6 +77,73 @@ def save_paired_ttests(prefix, n, rho, tau, scenario):
         rows.append(res)
     pd.concat(rows, ignore_index=True).to_csv(
         f"../results/paired_ttest_{prefix}_n{n}_rho{rho}_tau{tau}_{scenario}.csv",
+        index=False,
+    )
+
+
+def save_panel_friedman(prefix):
+    rows = []
+    friedman_methods = ["MI-NMF", "MI-GNMI", "MI-AClu"]
+
+    for scenario in scenarios:
+        for n in n_values:
+            for rho in rho_values:
+                for metric in metrics_to_use:
+                    panel_blocks = []
+
+                    # 1 panel = fixed (prefix, n, rho, scenario), blocks = (tau, repetition)
+                    for tau in tau_values:
+                        score_df = pd.DataFrame(
+                            {
+                                "MI-NMF": pd.read_csv(
+                                    f"../results/res_scores_MICluEnN_{prefix}_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
+                                )[metric],
+                                "MI-GNMI": pd.read_csv(
+                                    f"../results/res_scores_MICluEnNMI_{prefix}_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
+                                )[metric],
+                                "MI-AClu": pd.read_csv(
+                                    f"../results/res_scores_MICluEnHpp_{prefix}_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
+                                )[metric],
+                            }
+                        )
+                        panel_blocks.append(score_df)
+
+                    panel_df = pd.concat(panel_blocks, ignore_index=True)
+                    tmp = panel_df[friedman_methods].dropna()
+
+                    if len(tmp) < 2:
+                        stat, p_value = np.nan, np.nan
+                        mean_ranks = pd.Series(np.nan, index=friedman_methods)
+                        best_method = np.nan
+                    else:
+                        stat, p_value = friedmanchisquare(
+                            *(tmp[m].values for m in friedman_methods)
+                        )
+                        # higher is better -> descending rank, so smaller mean rank is better
+                        mean_ranks = tmp.rank(
+                            axis=1, ascending=False, method="average"
+                        ).mean()
+                        best_method = mean_ranks.idxmin()
+
+                    rows.append(
+                        {
+                            "prefix": prefix,
+                            "scenario": scenario,
+                            "n": n,
+                            "rho": rho,
+                            "metric": metric,
+                            "n_blocks": len(tmp),
+                            "friedman_chi2": stat,
+                            "p_value": p_value,
+                            "best_method": best_method,
+                            "mean_rank_MI_NMF": mean_ranks["MI-NMF"],
+                            "mean_rank_MI_GNMI": mean_ranks["MI-GNMI"],
+                            "mean_rank_MI_AClu": mean_ranks["MI-AClu"],
+                        }
+                    )
+
+    pd.DataFrame(rows).to_csv(
+        f"../results/friedman_panel_{prefix}.csv",
         index=False,
     )
 
@@ -452,3 +520,7 @@ for scenario in scenarios:
             for tau in tau_values:
                 save_paired_ttests("3c", n, rho, tau, scenario)
                 save_paired_ttests("3cib", n, rho, tau, scenario)
+
+
+save_panel_friedman("3c")
+save_panel_friedman("3cib")

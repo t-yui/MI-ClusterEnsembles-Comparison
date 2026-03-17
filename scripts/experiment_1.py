@@ -8,6 +8,7 @@ from scipy.spatial import distance
 from sklearn import preprocessing
 from tqdm import tqdm
 from logzero import logger
+from scipy.stats import friedmanchisquare
 from modules import (
     ensemble_clustering_nmi_,
     ensemble_clustering_NMF_,
@@ -55,6 +56,64 @@ def save_paired_ttests(prefix, n, std_dev):
         f"../results/paired_ttest_{prefix}_n{n}_STDDEV_{std_dev}.csv",
         index=False,
     )
+
+
+def save_panel_friedman(prefix):
+    rows = []
+    friedman_methods = ["NMF", "GNMI", "AClu"]
+
+    for K in Ks:
+        n = N * K
+        for metric in metrics_to_use:
+            panel_blocks = []
+
+            # 1 panel = fixed (prefix, n), blocks = (STD_DEV, repetition)
+            for STD_DEV in STD_DEVs:
+                score_df = pd.DataFrame(
+                    {
+                        method: pd.read_csv(
+                            f"../results/{prefix}_n{n}_STDDEV_{STD_DEV}_methname{method}.csv"
+                        )[metric]
+                        for method in friedman_methods
+                    }
+                )
+                panel_blocks.append(score_df)
+
+            panel_df = pd.concat(panel_blocks, ignore_index=True)
+            tmp = panel_df[friedman_methods].dropna()
+
+            if len(tmp) < 2:
+                stat, p_value = np.nan, np.nan
+                mean_ranks = pd.Series(np.nan, index=friedman_methods)
+                best_method = np.nan
+            else:
+                stat, p_value = friedmanchisquare(
+                    *(tmp[m].values for m in friedman_methods)
+                )
+                # higher is better -> descending rank, so smaller mean rank is better
+                mean_ranks = tmp.rank(axis=1, ascending=False, method="average").mean()
+                best_method = mean_ranks.idxmin()
+
+            rows.append(
+                {
+                    "scenario": prefix,
+                    "n": n,
+                    "metric": metric,
+                    "n_blocks": len(tmp),
+                    "friedman_chi2": stat,
+                    "p_value": p_value,
+                    "best_method": best_method,
+                    "mean_rank_NMF": mean_ranks["NMF"],
+                    "mean_rank_GNMI": mean_ranks["GNMI"],
+                    "mean_rank_AClu": mean_ranks["AClu"],
+                }
+            )
+
+    pd.DataFrame(rows).to_csv(
+        f"../results/friedman_panel_{prefix}.csv",
+        index=False,
+    )
+
 
 # instability
 ## class-balanced scenarios
@@ -300,3 +359,6 @@ for K in Ks:
     for STD_DEV in STD_DEVs:
         save_paired_ttests("balanced", N * K, STD_DEV)
         save_paired_ttests("imbalanced", N * K, STD_DEV)
+
+save_panel_friedman("balanced")
+save_panel_friedman("imbalanced")
