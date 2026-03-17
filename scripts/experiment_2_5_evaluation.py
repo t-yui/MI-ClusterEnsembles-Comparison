@@ -81,69 +81,92 @@ def save_paired_ttests(prefix, n, rho, tau, scenario):
     )
 
 
-def save_panel_friedman(prefix):
+def save_friedman_by_balance_rho_tau(scenario):
     rows = []
-    friedman_methods = ["MI-NMF", "MI-GNMI", "MI-AClu"]
+    ensemble_methods = ["MI-NMF", "MI-GNMI", "MI-AClu"]
+    method_filekey = {
+        "MI-NMF": "MICluEnN",
+        "MI-GNMI": "MICluEnNMI",
+        "MI-AClu": "MICluEnHpp",
+    }
 
-    for scenario in scenarios:
-        for n in n_values:
-            for rho in rho_values:
+    for prefix in ["3c", "3cib"]:
+        balance_label = "balanced" if prefix == "3c" else "imbalanced"
+
+        for rho in rho_values:
+            for tau in tau_values:
                 for metric in metrics_to_use:
-                    panel_blocks = []
+                    block_list = []
 
-                    # 1 panel = fixed (prefix, n, rho, scenario), blocks = (tau, repetition)
-                    for tau in tau_values:
+                    # fixed: (balance/imbalance, rho, tau)
+                    # blocks: (n, repetition)
+                    for n in n_values:
                         score_df = pd.DataFrame(
                             {
-                                "MI-NMF": pd.read_csv(
-                                    f"../results/res_scores_MICluEnN_{prefix}_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
-                                )[metric],
-                                "MI-GNMI": pd.read_csv(
-                                    f"../results/res_scores_MICluEnNMI_{prefix}_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
-                                )[metric],
-                                "MI-AClu": pd.read_csv(
-                                    f"../results/res_scores_MICluEnHpp_{prefix}_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
-                                )[metric],
+                                method: pd.read_csv(
+                                    f"../results/res_scores_{filekey}_{prefix}_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
+                                )[metric]
+                                for method, filekey in method_filekey.items()
+                            }
+                        ).dropna()
+
+                        if len(score_df) == 0:
+                            continue
+
+                        score_df = score_df.reset_index(drop=True)
+                        score_df["block_id"] = [
+                            f"{prefix}_rho{rho}_tau{tau}_{scenario}_n{n}_s{i}"
+                            for i in range(len(score_df))
+                        ]
+                        block_list.append(score_df)
+
+                    if len(block_list) == 0:
+                        rows.append(
+                            {
+                                "balance": balance_label,
+                                "rho": rho,
+                                "tau": tau,
+                                "metric": metric,
+                                "n_blocks": 0,
+                                "statistic": np.nan,
+                                "p_value": np.nan,
+                                "mean_rank_MI-NMF": np.nan,
+                                "mean_rank_MI-GNMI": np.nan,
+                                "mean_rank_MI-AClu": np.nan,
                             }
                         )
-                        panel_blocks.append(score_df)
+                        continue
 
-                    panel_df = pd.concat(panel_blocks, ignore_index=True)
-                    tmp = panel_df[friedman_methods].dropna()
+                    block_df = pd.concat(block_list, ignore_index=True)
 
-                    if len(tmp) < 2:
-                        stat, p_value = np.nan, np.nan
-                        mean_ranks = pd.Series(np.nan, index=friedman_methods)
-                        best_method = np.nan
-                    else:
-                        stat, p_value = friedmanchisquare(
-                            *(tmp[m].values for m in friedman_methods)
-                        )
-                        # higher is better -> descending rank, so smaller mean rank is better
-                        mean_ranks = tmp.rank(
-                            axis=1, ascending=False, method="average"
-                        ).mean()
-                        best_method = mean_ranks.idxmin()
+                    stat, p_value = friedmanchisquare(
+                        block_df["MI-NMF"].values,
+                        block_df["MI-GNMI"].values,
+                        block_df["MI-AClu"].values,
+                    )
+
+                    # higher score = better になるように rank を付ける
+                    mean_ranks = block_df[ensemble_methods].rank(
+                        axis=1, ascending=True, method="average"
+                    ).mean()
 
                     rows.append(
                         {
-                            "prefix": prefix,
-                            "scenario": scenario,
-                            "n": n,
+                            "balance": balance_label,
                             "rho": rho,
+                            "tau": tau,
                             "metric": metric,
-                            "n_blocks": len(tmp),
-                            "friedman_chi2": stat,
+                            "n_blocks": len(block_df),
+                            "statistic": stat,
                             "p_value": p_value,
-                            "best_method": best_method,
-                            "mean_rank_MI_NMF": mean_ranks["MI-NMF"],
-                            "mean_rank_MI_GNMI": mean_ranks["MI-GNMI"],
-                            "mean_rank_MI_AClu": mean_ranks["MI-AClu"],
+                            "mean_rank_MI-NMF": mean_ranks["MI-NMF"],
+                            "mean_rank_MI-GNMI": mean_ranks["MI-GNMI"],
+                            "mean_rank_MI-AClu": mean_ranks["MI-AClu"],
                         }
                     )
 
     pd.DataFrame(rows).to_csv(
-        f"../results/friedman_panel_{prefix}.csv",
+        "../results/friedman_by_balance_rho_tau_{0}.csv".format(scenario),
         index=False,
     )
 
@@ -521,6 +544,5 @@ for scenario in scenarios:
                 save_paired_ttests("3c", n, rho, tau, scenario)
                 save_paired_ttests("3cib", n, rho, tau, scenario)
 
-
-save_panel_friedman("3c")
-save_panel_friedman("3cib")
+for scenario in scenarios:
+    save_friedman_by_balance_rho_tau(scenario)
