@@ -244,8 +244,7 @@ def ensemble_clustering_(
     distMatrix = 1 - cM / (cls_times)
     distArray = ssd.squareform(distMatrix)
     clu = linkage(distArray, method="ward")
-    distance_threshold = clu[-3, 2]
-    hclu = fcluster(clu, t=distance_threshold, criterion="distance")
+    hclu = fcluster(clu, t=n_clst, criterion="maxclust")
     return hclu, y_preds
 
 
