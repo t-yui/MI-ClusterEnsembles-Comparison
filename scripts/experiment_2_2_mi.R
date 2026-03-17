@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-setwd("/Users/yuitomo/Develop/MI-ClusterEnsembles-Comparison/scripts/")
+setwd("/your_directory/MI-ClusterEnsembles-Comparison/scripts/")
 
 library(mice)
 library(data.table)
