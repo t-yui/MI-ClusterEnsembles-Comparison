@@ -53,9 +53,7 @@ exp2_scenarios = ["MCAR", "MAR"]
 
 # color palettes
 exp1_hue_order = ["GNMI", "NMF", "AClu"]
-exp1_palette = dict(
-    zip(exp1_hue_order, sns.color_palette("Set2", len(exp1_hue_order)))
-)
+exp1_palette = dict(zip(exp1_hue_order, sns.color_palette("Set2", len(exp1_hue_order))))
 
 exp2_hue_order = [
     "k-means-full",
@@ -65,9 +63,7 @@ exp2_hue_order = [
     "MI-NMF",
     "MI-AClu",
 ]
-exp2_palette = dict(
-    zip(exp2_hue_order, sns.color_palette("Set2", len(exp2_hue_order)))
-)
+exp2_palette = dict(zip(exp2_hue_order, sns.color_palette("Set2", len(exp2_hue_order))))
 
 BOXPLOT_STYLE = dict(
     linewidth=4,
@@ -117,7 +113,9 @@ def load_exp1_metric(K, scenario, metric):
     frames = []
     for STD_DEV in std_devs:
         for methname in methods:
-            file_name = f"../results/{scenario}_n{N*K}_STDDEV_{STD_DEV}_methname{methname}.csv"
+            file_name = (
+                f"../results/{scenario}_n{N*K}_STDDEV_{STD_DEV}_methname{methname}.csv"
+            )
             vals = pd.read_csv(file_name)[metric]
             frames.append(
                 pd.DataFrame(
@@ -176,9 +174,11 @@ for metric in metrics_to_plot:
     for i, K in enumerate(Ks):
         for j, scenario in enumerate(exp1_scenarios):
             score_data = load_exp1_metric(K, scenario, metric)
-            stabs = pd.read_csv(f"../results/stabs_{scenario}.csv").values[
-                i * len(std_devs) : (i + 1) * len(std_devs)
-            ].ravel()
+            stabs = (
+                pd.read_csv(f"../results/stabs_{scenario}.csv")
+                .values[i * len(std_devs) : (i + 1) * len(std_devs)]
+                .ravel()
+            )
 
             ax1 = axes[i, j]
             sns.boxplot(
@@ -237,7 +237,9 @@ def plot_exp2_family(prefix, stab_file, first_fig_no):
 
             for n_index, n in enumerate(n_values):
                 for scenario_index, scenario in enumerate(exp2_scenarios):
-                    score_data = load_exp2_metric(prefix, n, rho_value, scenario, metric_full)
+                    score_data = load_exp2_metric(
+                        prefix, n, rho_value, scenario, metric_full
+                    )
                     stabs_tmp = get_stabs(stab_file, n, rho_value, scenario)
 
                     ax1 = axes[n_index, scenario_index]
@@ -323,7 +325,7 @@ for l in range(cls_times):
                 cM[i, j] += 1
 
 Q, S = symmetric_nmf(cM / cls_times, 3)
-#labels = get_final_partition(Q)
+# labels = get_final_partition(Q)
 
 ## figure 6.1
 plt.figure(figsize=(10, 8))
@@ -340,4 +342,3 @@ plt.savefig("../plots/figure_6_2.eps")
 plt.savefig("../plots/figure_6_2.png")
 plt.clf()
 plt.close()
-

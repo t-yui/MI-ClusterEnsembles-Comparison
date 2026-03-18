@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 from scipy.stats import friedmanchisquare
-from modules import evaluate_clustering, paired_ttest_between_methods
+from modules import evaluate_clustering
 
 
 # parameters
@@ -45,40 +45,6 @@ def append_scores(list_ARI, list_NMI, list_SS, list_P, data, labels_true, labels
     list_NMI.append(scores["NMI"])
     list_SS.append(scores["Silhouette"])
     list_P.append(scores["Purity"])
-
-
-def save_paired_ttests(prefix, n, rho, tau, scenario):
-    rows = []
-    for metric in metrics_to_use:
-        score_df = pd.DataFrame(
-            {
-                "kmeans-full": pd.read_csv(
-                    f"../results/res_scores_kmeans_{prefix}_n{n}_rho{rho}.csv"
-                )[metric],
-                "k-means-CCA": pd.read_csv(
-                    f"../results/res_scores_ccakmeanspp_{prefix}_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
-                )[metric],
-                "k-pod": pd.read_csv(
-                    f"../results/res_scores_kpod_{prefix}_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
-                )[metric],
-                "MI-AClu": pd.read_csv(
-                    f"../results/res_scores_MICluEnHpp_{prefix}_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
-                )[metric],
-                "MI-NMF": pd.read_csv(
-                    f"../results/res_scores_MICluEnN_{prefix}_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
-                )[metric],
-                "MI-GNMI": pd.read_csv(
-                    f"../results/res_scores_MICluEnNMI_{prefix}_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
-                )[metric],
-            }
-        )
-        res = paired_ttest_between_methods(score_df)
-        res.insert(0, "metric", metric)
-        rows.append(res)
-    pd.concat(rows, ignore_index=True).to_csv(
-        f"../results/paired_ttest_{prefix}_n{n}_rho{rho}_tau{tau}_{scenario}.csv",
-        index=False,
-    )
 
 
 def save_friedman_by_balance_rho_tau(scenario):
@@ -145,10 +111,11 @@ def save_friedman_by_balance_rho_tau(scenario):
                         block_df["MI-AClu"].values,
                     )
 
-                    # higher score = better になるように rank を付ける
-                    mean_ranks = block_df[ensemble_methods].rank(
-                        axis=1, ascending=True, method="average"
-                    ).mean()
+                    mean_ranks = (
+                        block_df[ensemble_methods]
+                        .rank(axis=1, ascending=False, method="average")
+                        .mean()
+                    )
 
                     rows.append(
                         {
@@ -192,7 +159,14 @@ for n in n_values:
             list_NMI.append(scores["NMI"])
             list_SS.append(scores["Silhouette"])
             list_P.append(scores["Purity"])
-        res_scores = pd.DataFrame({"ARI": list_ARI, "NMI": list_NMI, "Silhouette": list_SS, "Purity": list_P,})
+        res_scores = pd.DataFrame(
+            {
+                "ARI": list_ARI,
+                "NMI": list_NMI,
+                "Silhouette": list_SS,
+                "Purity": list_P,
+            }
+        )
         res_scores_name = f"res_scores_kmeans_3c_n{n}_rho{rho}.csv"
         res_scores.to_csv(f"../results/{res_scores_name}")
 
@@ -216,7 +190,14 @@ for n in n_values:
             list_NMI.append(scores["NMI"])
             list_SS.append(scores["Silhouette"])
             list_P.append(scores["Purity"])
-        res_scores = pd.DataFrame({"ARI": list_ARI, "NMI": list_NMI, "Silhouette": list_SS, "Purity": list_P,})
+        res_scores = pd.DataFrame(
+            {
+                "ARI": list_ARI,
+                "NMI": list_NMI,
+                "Silhouette": list_SS,
+                "Purity": list_P,
+            }
+        )
         res_scores_name = f"res_scores_kmeans_3cib_n{n}_rho{rho}.csv"
         res_scores.to_csv(f"../results/{res_scores_name}")
 
@@ -252,7 +233,14 @@ for scenario in scenarios:
                         list_NMI.append(scores["NMI"])
                         list_SS.append(scores["Silhouette"])
                         list_P.append(scores["Purity"])
-                res_scores = pd.DataFrame({"ARI": list_ARI, "NMI": list_NMI, "Silhouette": list_SS, "Purity": list_P,})
+                res_scores = pd.DataFrame(
+                    {
+                        "ARI": list_ARI,
+                        "NMI": list_NMI,
+                        "Silhouette": list_SS,
+                        "Purity": list_P,
+                    }
+                )
                 res_scores_name = (
                     f"res_scores_ccakmeanspp_3c_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
                 )
@@ -288,7 +276,14 @@ for scenario in scenarios:
                         list_NMI.append(scores["NMI"])
                         list_SS.append(scores["Silhouette"])
                         list_P.append(scores["Purity"])
-                res_scores = pd.DataFrame({"ARI": list_ARI, "NMI": list_NMI, "Silhouette": list_SS, "Purity": list_P,})
+                res_scores = pd.DataFrame(
+                    {
+                        "ARI": list_ARI,
+                        "NMI": list_NMI,
+                        "Silhouette": list_SS,
+                        "Purity": list_P,
+                    }
+                )
                 res_scores_name = (
                     f"res_scores_ccakmeanspp_3cib_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
                 )
@@ -318,7 +313,14 @@ for scenario in scenarios:
                     list_NMI.append(scores["NMI"])
                     list_SS.append(scores["Silhouette"])
                     list_P.append(scores["Purity"])
-                res_scores = pd.DataFrame({"ARI": list_ARI, "NMI": list_NMI, "Silhouette": list_SS, "Purity": list_P,})
+                res_scores = pd.DataFrame(
+                    {
+                        "ARI": list_ARI,
+                        "NMI": list_NMI,
+                        "Silhouette": list_SS,
+                        "Purity": list_P,
+                    }
+                )
                 res_scores_name = (
                     f"res_scores_kpod_3c_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
                 )
@@ -346,7 +348,14 @@ for scenario in scenarios:
                     list_NMI.append(scores["NMI"])
                     list_SS.append(scores["Silhouette"])
                     list_P.append(scores["Purity"])
-                res_scores = pd.DataFrame({"ARI": list_ARI, "NMI": list_NMI, "Silhouette": list_SS, "Purity": list_P,})
+                res_scores = pd.DataFrame(
+                    {
+                        "ARI": list_ARI,
+                        "NMI": list_NMI,
+                        "Silhouette": list_SS,
+                        "Purity": list_P,
+                    }
+                )
                 res_scores_name = (
                     f"res_scores_kpod_3cib_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
                 )
@@ -378,7 +387,14 @@ for scenario in scenarios:
                     list_NMI.append(scores["NMI"])
                     list_SS.append(scores["Silhouette"])
                     list_P.append(scores["Purity"])
-                res_scores = pd.DataFrame({"ARI": list_ARI, "NMI": list_NMI, "Silhouette": list_SS, "Purity": list_P,})
+                res_scores = pd.DataFrame(
+                    {
+                        "ARI": list_ARI,
+                        "NMI": list_NMI,
+                        "Silhouette": list_SS,
+                        "Purity": list_P,
+                    }
+                )
                 res_scores_name = (
                     f"res_scores_MICluEnHpp_3c_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
                 )
@@ -408,7 +424,14 @@ for scenario in scenarios:
                     list_NMI.append(scores["NMI"])
                     list_SS.append(scores["Silhouette"])
                     list_P.append(scores["Purity"])
-                res_scores = pd.DataFrame({"ARI": list_ARI, "NMI": list_NMI, "Silhouette": list_SS, "Purity": list_P,})
+                res_scores = pd.DataFrame(
+                    {
+                        "ARI": list_ARI,
+                        "NMI": list_NMI,
+                        "Silhouette": list_SS,
+                        "Purity": list_P,
+                    }
+                )
                 res_scores_name = (
                     f"res_scores_MICluEnHpp_3cib_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
                 )
@@ -438,7 +461,14 @@ for scenario in scenarios:
                     list_NMI.append(scores["NMI"])
                     list_SS.append(scores["Silhouette"])
                     list_P.append(scores["Purity"])
-                res_scores = pd.DataFrame({"ARI": list_ARI, "NMI": list_NMI, "Silhouette": list_SS, "Purity": list_P,})
+                res_scores = pd.DataFrame(
+                    {
+                        "ARI": list_ARI,
+                        "NMI": list_NMI,
+                        "Silhouette": list_SS,
+                        "Purity": list_P,
+                    }
+                )
                 res_scores_name = (
                     f"res_scores_MICluEnN_3c_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
                 )
@@ -468,7 +498,14 @@ for scenario in scenarios:
                     list_NMI.append(scores["NMI"])
                     list_SS.append(scores["Silhouette"])
                     list_P.append(scores["Purity"])
-                res_scores = pd.DataFrame({"ARI": list_ARI, "NMI": list_NMI, "Silhouette": list_SS, "Purity": list_P,})
+                res_scores = pd.DataFrame(
+                    {
+                        "ARI": list_ARI,
+                        "NMI": list_NMI,
+                        "Silhouette": list_SS,
+                        "Purity": list_P,
+                    }
+                )
                 res_scores_name = (
                     f"res_scores_MICluEnN_3cib_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
                 )
@@ -500,7 +537,14 @@ for scenario in scenarios:
                     list_NMI.append(scores["NMI"])
                     list_SS.append(scores["Silhouette"])
                     list_P.append(scores["Purity"])
-                res_scores = pd.DataFrame({"ARI": list_ARI, "NMI": list_NMI, "Silhouette": list_SS, "Purity": list_P,})
+                res_scores = pd.DataFrame(
+                    {
+                        "ARI": list_ARI,
+                        "NMI": list_NMI,
+                        "Silhouette": list_SS,
+                        "Purity": list_P,
+                    }
+                )
                 res_scores_name = (
                     f"res_scores_MICluEnNMI_3c_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
                 )
@@ -530,19 +574,19 @@ for scenario in scenarios:
                     list_NMI.append(scores["NMI"])
                     list_SS.append(scores["Silhouette"])
                     list_P.append(scores["Purity"])
-                res_scores = pd.DataFrame({"ARI": list_ARI, "NMI": list_NMI, "Silhouette": list_SS, "Purity": list_P,})
+                res_scores = pd.DataFrame(
+                    {
+                        "ARI": list_ARI,
+                        "NMI": list_NMI,
+                        "Silhouette": list_SS,
+                        "Purity": list_P,
+                    }
+                )
                 res_scores_name = (
                     f"res_scores_MICluEnNMI_3cib_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
                 )
                 res_scores.to_csv(f"../results/{res_scores_name}")
 
-
-for scenario in scenarios:
-    for n in n_values:
-        for rho in rho_values:
-            for tau in tau_values:
-                save_paired_ttests("3c", n, rho, tau, scenario)
-                save_paired_ttests("3cib", n, rho, tau, scenario)
 
 for scenario in scenarios:
     save_friedman_by_balance_rho_tau(scenario)

@@ -19,7 +19,6 @@ from modules import (
     evaluate_clustering,
     eval_scores,
     d_V,
-    paired_ttest_between_methods,
 )
 
 
@@ -36,26 +35,6 @@ output = True
 N, Ks, DIM, STD_DEVs, n_sim = setting_of_simulation()
 metrics_to_use = ["ARI", "NMI", "SS", "P"]
 methods = ["NMF", "AClu", "GNMI"]
-
-
-def save_paired_ttests(prefix, n, std_dev):
-    rows = []
-    for metric in metrics_to_use:
-        score_df = pd.DataFrame(
-            {
-                method: pd.read_csv(
-                    f"../results/{prefix}_n{n}_STDDEV_{std_dev}_methname{method}.csv"
-                )[metric]
-                for method in methods
-            }
-        )
-        res = paired_ttest_between_methods(score_df)
-        res.insert(0, "metric", metric)
-        rows.append(res)
-    pd.concat(rows, ignore_index=True).to_csv(
-        f"../results/paired_ttest_{prefix}_n{n}_STDDEV_{std_dev}.csv",
-        index=False,
-    )
 
 
 def save_panel_friedman(prefix):
@@ -354,11 +333,6 @@ for K in Ks:
             index=False,
         )
 
-
-for K in Ks:
-    for STD_DEV in STD_DEVs:
-        save_paired_ttests("balanced", N * K, STD_DEV)
-        save_paired_ttests("imbalanced", N * K, STD_DEV)
 
 save_panel_friedman("balanced")
 save_panel_friedman("imbalanced")

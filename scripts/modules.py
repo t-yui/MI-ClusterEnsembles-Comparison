@@ -97,26 +97,6 @@ def evaluate_clustering(data, labels_true, labels_pred):
     }
 
 
-def paired_ttest_between_methods(score_df):
-    rows = []
-    for method_1, method_2 in combinations(score_df.columns, 2):
-        tmp = score_df[[method_1, method_2]].dropna()
-        if len(tmp) < 2:
-            t_stat, p_value = np.nan, np.nan
-        else:
-            t_stat, p_value = ttest_rel(tmp[method_1], tmp[method_2])
-        rows.append(
-            {
-                "method_1": method_1,
-                "method_2": method_2,
-                "n_pairs": len(tmp),
-                "t_stat": t_stat,
-                "p_value": p_value,
-            }
-        )
-    return pd.DataFrame(rows)
-
-
 # distance for cluster ensemble
 def d(C1, C2, u, v):
     ## Mirkin distance
@@ -211,6 +191,7 @@ def apply_kmeans_clustering_(data, n_clst=2):
     km = get_km_(k=n_clst, X=data_scaled)
     labels = km.predict(data_scaled)
     return labels
+
 
 def apply_kmeans_clustering(data, n_clst=2, random_state=1):
     scaler = preprocessing.StandardScaler()
@@ -401,11 +382,11 @@ def apply_each_clustering_(df_imp, cls_times, n_clst=3):
     return cluster_labels
 
 
-def apply_each_clustering(df_imp,cls_times,n_clst=3):
+def apply_each_clustering(df_imp, cls_times, n_clst=3):
     cluster_labels = []
     for l in range(cls_times):
-        data_tmp = df_imp.loc[df_imp[".imp"]==l+1,:].reset_index(drop=True)
-        data_tmp = data_tmp.iloc[:,3:]
+        data_tmp = df_imp.loc[df_imp[".imp"] == l + 1, :].reset_index(drop=True)
+        data_tmp = data_tmp.iloc[:, 3:]
         scaler = preprocessing.StandardScaler()
         scaler.fit(data_tmp)
         data_tmp = pd.DataFrame(scaler.transform(data_tmp))
@@ -496,4 +477,3 @@ def exec_clustering(filepath):
         labels = np.full(shape=len(original_index), fill_value=-1)
         labels[original_index.isin(X_complete.index)] = kmeans.labels_
     return labels
-

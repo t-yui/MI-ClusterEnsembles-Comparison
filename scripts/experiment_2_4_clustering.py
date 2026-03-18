@@ -36,7 +36,7 @@ for n in n_values:
         for s in tqdm(range(S)):
             filepath_not_missing_data = f"../data/3c_n{n}_rho{rho}_{s}.csv"
             data = pd.read_csv(filepath_not_missing_data).iloc[:, 1:]
-            #labels = apply_kmeans_clustering(data, n_clst=3, random_state=s + 1)
+            # labels = apply_kmeans_clustering(data, n_clst=3, random_state=s + 1)
             labels = apply_kmeans_clustering_(data, n_clst=3)
             cluster_labels.append(labels)
         res = pd.DataFrame(cluster_labels).T
@@ -51,7 +51,7 @@ for n in n_values:
         for s in tqdm(range(S)):
             filepath_not_missing_data = f"../data/3cib_n{n}_rho{rho}_{s}.csv"
             data = pd.read_csv(filepath_not_missing_data).iloc[:, 1:]
-            #labels = apply_kmeans_clustering(data, n_clst=3, random_state=s + 1)
+            # labels = apply_kmeans_clustering(data, n_clst=3, random_state=s + 1)
             labels = apply_kmeans_clustering_(data, n_clst=3)
             cluster_labels.append(labels)
         res = pd.DataFrame(cluster_labels).T
@@ -122,9 +122,7 @@ for scenario in scenarios:
         for rho in rho_values:
             for tau in tau_values:
                 for s in tqdm(range(S)):
-                    output_file_name = (
-                        f"res_baseKmeanspp_3cib_n{n}_rho{rho}_tau{tau}_{scenario}_{s}.csv"
-                    )
+                    output_file_name = f"res_baseKmeanspp_3cib_n{n}_rho{rho}_tau{tau}_{scenario}_{s}.csv"
                     outpath = f"../results/{output_file_name}"
                     if os.path.exists(outpath):
                         pass
@@ -173,9 +171,7 @@ for scenario in scenarios:
                 for s in tqdm(range(S)):
                     try:
                         res_file_name = f"res_baseKmeanspp_3cib_n{n}_rho{rho}_tau{tau}_{scenario}_{s}.csv"
-                        res_path = (
-                            f"../results/{res_file_name}"
-                        )
+                        res_path = f"../results/{res_file_name}"
                         res_bc = pd.read_csv(res_path)
                         labels = apply_mi_ensemble_clustering(res_bc, n_clst=3)
                         cluster_labels.append(labels)
