@@ -80,25 +80,9 @@ LINE_STYLE = dict(
     linestyle="dashed",
     linewidth=2,
     markersize=12,
-    color="black",
+    color="blue",
     label="Instability",
 )
-
-
-def add_combined_legend(ax1, ax2, fontsize=32):
-    handles1, labels1 = ax1.get_legend_handles_labels()
-    handles2, labels2 = ax2.get_legend_handles_labels()
-
-    if ax1.legend_ is not None:
-        ax1.legend_.remove()
-
-    ax1.legend(
-        handles1 + handles2,
-        labels1 + labels2,
-        loc="upper left",
-        bbox_to_anchor=(1.1, 1),
-        fontsize=fontsize,
-    )
 
 
 def get_stabs(stab_file, n, rho, scenario):
@@ -171,6 +155,9 @@ for metric in metrics_to_plot:
         figsize=(24 * 2, 10 * 2),
     )
 
+    handles_all = []
+    labels_all = []
+
     for i, K in enumerate(Ks):
         for j, scenario in enumerate(exp1_scenarios):
             score_data = load_exp1_metric(K, scenario, metric)
@@ -204,14 +191,33 @@ for metric in metrics_to_plot:
 
             ax2 = ax1.twinx()
             ax2.plot(range(len(std_devs)), stabs, **LINE_STYLE)
-            ax2.set_ylabel("Instability", fontsize=40, color="black")
+            ax2.set_ylabel("Instability", fontsize=40, color="blue")
             ax2.set_yticks([0, 0.25, 0.5, 0.75, 1])
-            ax2.tick_params(axis="y", labelcolor="black", labelsize=36)
+            ax2.tick_params(axis="y", labelcolor="blue", labelsize=36)
             ax2.set_ylim(-0.1, 1.05)
 
-            add_combined_legend(ax1, ax2, fontsize=32)
+            if i == 0 and j == 0:
+                handles1, labels1 = ax1.get_legend_handles_labels()
+                handles2, labels2 = ax2.get_legend_handles_labels()
+                handles_all = handles1 + handles2
+                labels_all = labels1 + labels2
 
-    plt.tight_layout()
+            if ax1.legend_ is not None:
+                ax1.legend_.remove()
+            if ax2.legend_ is not None:
+                ax2.legend_.remove()
+
+    plt.tight_layout(rect=[0, 0.08, 1, 1])
+    
+    fig.legend(
+        handles_all,
+        labels_all,
+        loc="lower center",
+        bbox_to_anchor=(0.5, 0.0),
+        ncol=len(labels_all),
+        fontsize=32,
+    )
+
     plt.savefig(f"../plots/figure_1_{metric}.eps", bbox_inches="tight")
     plt.savefig(f"../plots/figure_1_{metric}.png", bbox_inches="tight")
     plt.close(fig)
@@ -234,6 +240,9 @@ def plot_exp2_family(prefix, stab_file, first_fig_no):
                 ncols=len(exp2_scenarios),
                 figsize=(24 * 2, 10 * 2),
             )
+
+            handles_all = []
+            labels_all = []
 
             for n_index, n in enumerate(n_values):
                 for scenario_index, scenario in enumerate(exp2_scenarios):
@@ -274,14 +283,33 @@ def plot_exp2_family(prefix, stab_file, first_fig_no):
 
                     ax2 = ax1.twinx()
                     ax2.plot(range(len(tau_values)), stabs_tmp, **LINE_STYLE)
-                    ax2.set_ylabel("Instability", fontsize=40, color="black")
+                    ax2.set_ylabel("Instability", fontsize=40, color="blue")
                     ax2.set_yticks([0, 0.25, 0.5, 0.75, 1])
-                    ax2.tick_params(axis="y", labelcolor="black", labelsize=36)
+                    ax2.tick_params(axis="y", labelcolor="blue", labelsize=36)
                     ax2.set_ylim(-0.1, 1.05)
 
-                    add_combined_legend(ax1, ax2, fontsize=32)
+                    if n_index == 0 and scenario_index == 0:
+                        handles1, labels1 = ax1.get_legend_handles_labels()
+                        handles2, labels2 = ax2.get_legend_handles_labels()
+                        handles_all = handles1 + handles2
+                        labels_all = labels1 + labels2
 
-            plt.tight_layout()
+                    if ax1.legend_ is not None:
+                        ax1.legend_.remove()
+                    if ax2.legend_ is not None:
+                        ax2.legend_.remove()
+
+            plt.tight_layout(rect=[0, 0.08, 1, 1])
+            
+            fig.legend(
+                handles_all,
+                labels_all,
+                loc="lower center",
+                bbox_to_anchor=(0.5, 0.0),
+                ncol=len(labels_all),
+                fontsize=32,
+            )
+
             plt.savefig(f"../plots/figure_{nfig}_{metric}.eps", bbox_inches="tight")
             plt.savefig(f"../plots/figure_{nfig}_{metric}.png", bbox_inches="tight")
             plt.close(fig)
