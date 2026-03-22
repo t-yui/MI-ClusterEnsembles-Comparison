@@ -2,10 +2,26 @@ import pandas as pd
 import math
 
 FILES = [
-    ("../results/friedman_panel_balanced.csv", "Friedman test results for Experiment 1 (balanced)", "tab:friedman-panel-balanced"),
-    ("../results/friedman_panel_imbalanced.csv", "Friedman test results for Experiment 1 (imbalanced)", "tab:friedman-panel-imbalanced"),
-    ("../results/friedman_by_balance_rho_tau_MCAR.csv", "Friedman test results for Experiment 2 (MCAR)", "tab:friedman-mcar"),
-    ("../results/friedman_by_balance_rho_tau_MAR.csv", "Friedman test results for Experiment 2 (MAR)", "tab:friedman-mar"),
+    (
+        "../results/friedman_panel_balanced.csv",
+        "Friedman test results for Experiment 1 (balanced)",
+        "tab:friedman-panel-balanced",
+    ),
+    (
+        "../results/friedman_panel_imbalanced.csv",
+        "Friedman test results for Experiment 1 (imbalanced)",
+        "tab:friedman-panel-imbalanced",
+    ),
+    (
+        "../results/friedman_by_balance_rho_tau_MCAR.csv",
+        "Friedman test results for Experiment 2 (MCAR)",
+        "tab:friedman-mcar",
+    ),
+    (
+        "../results/friedman_by_balance_rho_tau_MAR.csv",
+        "Friedman test results for Experiment 2 (MAR)",
+        "tab:friedman-mar",
+    ),
 ]
 
 METRIC_MAP = {
@@ -37,7 +53,7 @@ def fmt_num(x, digits=3):
 def fmt_p(x):
     if x < 1e-3:
         e = math.floor(math.log10(x))
-        m = x / (10 ** e)
+        m = x / (10**e)
         return rf"${m:.2f}\times 10^{{{e}}}$"
     return f"{x:.3f}"
 
@@ -79,8 +95,12 @@ def print_table(df, caption, label):
 
     if "friedman_chi2" in df.columns:
         stat_col = "friedman_chi2"
-        headers = ["Metric", "Scenario", "$n$", "Friedman $\\chi^2$", "$p$"] + rank_names + ["Best"]
-        align = "lll" + "r" * (2 + len(rank_cols)) + "l"
+        headers = (
+            ["Metric", "Scenario", "$n$", "Friedman $\\chi^2$", "p-value"]
+            + rank_names
+            + ["Best"]
+        )
+        align = "c" + "c" * (2 + len(rank_cols)) + "c"
         rows = []
         for _, row in df.iterrows():
             best = best_methods(row, rank_cols)
@@ -92,19 +112,27 @@ def print_table(df, caption, label):
                     s = rf"\textbf{{{s}}}"
                 ranks.append(s)
 
-            cells = [
-                tex_escape(metric_name(row["metric"])),
-                tex_escape(row["scenario"]),
-                str(row["n"]),
-                fmt_num(row[stat_col], 2),
-                fmt_p(row["p_value"]),
-            ] + ranks + [tex_escape("/".join(best))]
+            cells = (
+                [
+                    tex_escape(metric_name(row["metric"])),
+                    tex_escape(row["scenario"]),
+                    str(row["n"]),
+                    fmt_num(row[stat_col], 2),
+                    fmt_p(row["p_value"]),
+                ]
+                + ranks
+                + [tex_escape("/".join(best))]
+            )
 
             rows.append((sort_key_exp1(row), metric_name(row["metric"]), cells))
     else:
         stat_col = "statistic"
-        headers = ["Metric", "Balance", "$\\rho$", "$\\tau$", "Friedman $\\chi^2$", "$p$"] + rank_names + ["Best"]
-        align = "lrrr" + "r" * (2 + len(rank_cols)) + "l"
+        headers = (
+            ["Metric", "Balance", "$\\rho$", "$\\tau$", "Friedman $\\chi^2$", "p-value"]
+            + rank_names
+            + ["Best"]
+        )
+        align = "cccc" + "c" * (2 + len(rank_cols)) + "c"
         rows = []
         for _, row in df.iterrows():
             best = best_methods(row, rank_cols)
@@ -116,14 +144,18 @@ def print_table(df, caption, label):
                     s = rf"\textbf{{{s}}}"
                 ranks.append(s)
 
-            cells = [
-                tex_escape(metric_name(row["metric"])),
-                tex_escape(row["balance"]),
-                fmt_num(row["rho"], 1),
-                fmt_num(row["tau"], 1),
-                fmt_num(row[stat_col], 2),
-                fmt_p(row["p_value"]),
-            ] + ranks + [tex_escape("/".join(best))]
+            cells = (
+                [
+                    tex_escape(metric_name(row["metric"])),
+                    tex_escape(row["balance"]),
+                    fmt_num(row["rho"], 1),
+                    fmt_num(row["tau"], 1),
+                    fmt_num(row[stat_col], 2),
+                    fmt_p(row["p_value"]),
+                ]
+                + ranks
+                + [tex_escape("/".join(best))]
+            )
 
             rows.append((sort_key_exp2(row), metric_name(row["metric"]), cells))
 
@@ -153,4 +185,3 @@ def print_table(df, caption, label):
 
 for path, caption, label in FILES:
     print_table(pd.read_csv(path), caption, label)
-    

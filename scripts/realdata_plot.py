@@ -82,10 +82,15 @@ def compute_lowdim_embedding(data, method="pca", random_state=1):
             perplexity=perplexity,
         ).fit_transform(data)
     if method == "mds":
-        return MDS(n_components=2, random_state=random_state, normalized_stress="auto").fit_transform(data)
+        return MDS(
+            n_components=2, random_state=random_state, normalized_stress="auto"
+        ).fit_transform(data)
     if method == "umap":
         import umap
-        return umap.UMAP(n_components=2, init="random", random_state=random_state).fit_transform(data)
+
+        return umap.UMAP(
+            n_components=2, init="random", random_state=random_state
+        ).fit_transform(data)
     raise ValueError("Unsupported embedding method")
 
 
@@ -102,7 +107,9 @@ def geometric_median_matrices(matrices, eps=1e-15, tol=1e-05, max_iter=500):
     for _ in range(max_iter):
         distances = np.array([np.linalg.norm(x - z, ord="fro") for x in matrices])
         weights = 1.0 / (distances + eps)
-        z_new = np.tensordot(weights, np.stack(matrices, axis=0), axes=(0, 0)) / np.sum(weights)
+        z_new = np.tensordot(weights, np.stack(matrices, axis=0), axes=(0, 0)) / np.sum(
+            weights
+        )
         if np.linalg.norm(z_new - z, ord="fro") < tol:
             return z_new
         z = z_new
@@ -111,7 +118,7 @@ def geometric_median_matrices(matrices, eps=1e-15, tol=1e-05, max_iter=500):
 
 def classical_mds(distance_matrix, n_components=2):
     n = distance_matrix.shape[0]
-    d2 = distance_matrix ** 2
+    d2 = distance_matrix**2
     j = np.eye(n) - np.ones((n, n)) / n
     b = -0.5 * j.dot(d2).dot(j)
     eigvals, eigvecs = np.linalg.eigh(b)
@@ -183,7 +190,9 @@ def align_all_labels(labels_dict, reference_method):
         if methname == reference_method:
             aligned_dict[methname] = labels_dict[methname].copy()
         else:
-            aligned_dict[methname] = align_series_to_reference(reference, labels_dict[methname])
+            aligned_dict[methname] = align_series_to_reference(
+                reference, labels_dict[methname]
+            )
     return aligned_dict
 
 
@@ -201,7 +210,7 @@ def plot_missingness(missing_summary, outpath_base):
     ax.set_xlabel("Missingness (%)", fontsize=18)
     ax.set_ylabel("", fontsize=18)
     ax.tick_params(axis="both", labelsize=14)
-    #ax.set_title(dataset_title, fontsize=20)
+    # ax.set_title(dataset_title, fontsize=20)
     save_figure(fig, outpath_base)
 
 
@@ -222,7 +231,7 @@ def plot_agreement_heatmap(agreement_matrix, outpath_base):
             color = "white" if np.isnan(val) or val < 0.5 else "black"
             ax.text(j, i, text, ha="center", va="center", color=color, fontsize=11)
     fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04, label="NMI")
-    #ax.set_title(dataset_title, fontsize=20)
+    # ax.set_title(dataset_title, fontsize=20)
     save_figure(fig, outpath_base)
 
 
@@ -241,41 +250,11 @@ def plot_silhouette_boxplot(res_scores, outpath_base):
         **BOXPLOT_STYLE,
     )
     ax.set_xlabel("", fontsize=18)
-    #ax.set_ylabel("Silhouette score", fontsize=20)
+    ax.set_ylabel("Silhouette score", fontsize=20)
     ax.tick_params(axis="x", labelsize=15, rotation=25)
     ax.tick_params(axis="y", labelsize=16)
-    ax.set_title(dataset_title, fontsize=20)
+    # ax.set_title(dataset_title, fontsize=20)
     save_figure(fig, outpath_base)
-
-
-# def plot_k_selection_boxplot(res_kselect, selected_k, outpath_base):
-#     order = sorted(res_kselect["k"].unique())
-#     fig, ax = plt.subplots(figsize=(9, 6))
-#     sns.boxplot(
-#         x="k",
-#         y="Silhouette",
-#         data=res_kselect,
-#         order=order,
-#         color=sns.color_palette("Set2", 1)[0],
-#         ax=ax,
-#         **BOXPLOT_STYLE,
-#     )
-#     ax.set_xlabel("Number of clusters, $k$", fontsize=18)
-#     ax.set_ylabel("Silhouette score", fontsize=20)
-#     ax.tick_params(axis="x", labelsize=15)
-#     ax.tick_params(axis="y", labelsize=16)
-#     ax.set_title(f"{dataset_title}: k selection from multiply imputed data", fontsize=20)
-#     if selected_k in order:
-#         selected_pos = order.index(selected_k)
-#         ax.axvline(selected_pos, linestyle="dashed", color="black", linewidth=2)
-#         ax.text(
-#             selected_pos + 0.05,
-#             ax.get_ylim()[1] - 0.03 * (ax.get_ylim()[1] - ax.get_ylim()[0]),
-#             f"selected k = {selected_k}",
-#             fontsize=14,
-#             va="top",
-#         )
-#     save_figure(fig, outpath_base)
 
 
 def compute_mce_embedding(imp_df, feature_cols):
@@ -284,24 +263,36 @@ def compute_mce_embedding(imp_df, feature_cols):
         data_tmp = imp_df.loc[imp_df[".imp"] == imp_no, :].sort_values(".id")
         data_tmp = data_tmp.loc[:, feature_cols]
         data_scaled = scale_matrix(data_tmp)
-        emb = compute_lowdim_embedding(data_scaled, method=embedding_method, random_state=seed_num + int(imp_no))
+        emb = compute_lowdim_embedding(
+            data_scaled, method=embedding_method, random_state=seed_num + int(imp_no)
+        )
         base_embeddings.append(emb)
     coords = median_consensus_embedding(base_embeddings)
-    ids = imp_df.loc[imp_df[".imp"] == sorted(imp_df[".imp"].unique())[0], ".id"].sort_values().values
+    ids = (
+        imp_df.loc[imp_df[".imp"] == sorted(imp_df[".imp"].unique())[0], ".id"]
+        .sort_values()
+        .values
+    )
     return pd.DataFrame({"id": ids, "dim1": coords[:, 0], "dim2": coords[:, 1]})
 
 
 def plot_mce_embedding_panels(embedding_df, labels_dict, method_summary, outpath_base):
     ncols = 3
     nrows = int(math.ceil(len(panel_method_order) / ncols))
-    fig, axes = plt.subplots(nrows, ncols, figsize=(6 * ncols, 5.5 * nrows), squeeze=False)
+    fig, axes = plt.subplots(
+        nrows, ncols, figsize=(6 * ncols, 5.5 * nrows), squeeze=False
+    )
     embedding_df = embedding_df.set_index("id")
 
     all_clusters = []
     for methname in panel_method_order:
-        all_clusters.extend(labels_dict[methname].dropna().astype(int).unique().tolist())
+        all_clusters.extend(
+            labels_dict[methname].dropna().astype(int).unique().tolist()
+        )
     all_clusters = sorted(list(set(all_clusters)))
-    cluster_colors = {clst: plt.get_cmap("tab10")(i % 10) for i, clst in enumerate(all_clusters)}
+    cluster_colors = {
+        clst: plt.get_cmap("tab10")(i % 10) for i, clst in enumerate(all_clusters)
+    }
 
     for ax, methname in zip(axes.ravel(), panel_method_order):
         labels = labels_dict[methname]
@@ -325,33 +316,46 @@ def plot_mce_embedding_panels(embedding_df, labels_dict, method_summary, outpath
                 alpha=0.85,
                 label=f"C{clst}",
             )
-        selected_k = int(method_summary.loc[method_summary["method"] == methname, "selected_k"].iloc[0])
+        selected_k = int(
+            method_summary.loc[method_summary["method"] == methname, "selected_k"].iloc[
+                0
+            ]
+        )
         ax.set_title(f"{method_rename[methname]}", fontsize=16)
         ax.set_xlabel("MCE dimension 1", fontsize=14)
         ax.set_ylabel("MCE dimension 2", fontsize=14)
         ax.tick_params(axis="both", labelsize=12)
 
-    for ax in axes.ravel()[len(panel_method_order):]:
+    for ax in axes.ravel()[len(panel_method_order) :]:
         ax.axis("off")
 
-
     legend_handles = [
-            Line2D([0], [0], marker="o", linestyle="", color=cluster_colors[clst], label=f"C{clst}")
-            for clst in all_clusters
-        ]
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            linestyle="",
+            color=cluster_colors[clst],
+            label=f"C{clst}",
+        )
+        for clst in all_clusters
+    ]
     if labels_dict["ccakmeanspp"].isna().any():
         legend_handles.append(
-            Line2D([0], [0], marker="o", linestyle="", color="lightgray", label="Unclustered")
+            Line2D(
+                [0],
+                [0],
+                marker="o",
+                linestyle="",
+                color="lightgray",
+                label="Unclustered",
+            )
         )
     target_ax = axes.ravel()[-1]
     target_ax.legend(
-        handles=legend_handles, 
-        loc="center", 
-        ncol=1, 
-        fontsize=20, 
-        frameon=False  # 枠線が不要な場合はFalse、必要な場合はTrueにしてください
+        handles=legend_handles, loc="center", ncol=1, fontsize=20, frameon=False
     )
-    #fig.suptitle(f"{dataset_title}: median consensus embedding", fontsize=20, y=1.02)
+    # fig.suptitle(f"{dataset_title}: median consensus embedding", fontsize=20, y=1.02)
     fig.tight_layout()
     save_figure(fig, outpath_base)
 
@@ -374,7 +378,12 @@ def get_average_cluster_profile(imp_df, feature_cols, labels):
         frames.append(profile)
     if len(frames) == 0:
         return pd.DataFrame(columns=feature_cols)
-    profile_mean = pd.concat(frames, keys=range(len(frames))).groupby("cluster").mean().sort_index()
+    profile_mean = (
+        pd.concat(frames, keys=range(len(frames)))
+        .groupby("cluster")
+        .mean()
+        .sort_index()
+    )
     return profile_mean
 
 
@@ -382,22 +391,28 @@ def plot_cluster_profile_heatmaps(imp_df, feature_cols, labels_dict, outpath_bas
     profile_dict = {}
     all_values = []
     for methname in panel_method_order:
-        profile = get_average_cluster_profile(imp_df, feature_cols, labels_dict[methname])
+        profile = get_average_cluster_profile(
+            imp_df, feature_cols, labels_dict[methname]
+        )
         profile_dict[methname] = profile
         if profile.shape[0] > 0:
             all_values.append(profile.values)
-            
+
     vmax = 1.0
     if len(all_values) > 0:
         vmax = max(1.0, np.nanmax(np.abs(np.concatenate(all_values))))
     norm = TwoSlopeNorm(vmin=-vmax, vcenter=0.0, vmax=vmax)
 
-    fig, axes = plt.subplots(1, len(panel_method_order), 
-                             figsize=(4.5 * len(panel_method_order), 6), 
-                             squeeze=False, layout="constrained")
+    fig, axes = plt.subplots(
+        1,
+        len(panel_method_order),
+        figsize=(4.5 * len(panel_method_order), 6),
+        squeeze=False,
+        layout="constrained",
+    )
     axes = axes.ravel()
     im = None
-    
+
     for ax, methname in zip(axes, panel_method_order):
         profile = profile_dict[methname]
         if profile.shape[0] == 0:
@@ -414,8 +429,8 @@ def plot_cluster_profile_heatmaps(imp_df, feature_cols, labels_dict, outpath_bas
         cbar = fig.colorbar(im, ax=axes.tolist(), fraction=0.03, pad=0.04, aspect=30)
         cbar.set_label("Standardized mean", fontsize=14)
 
-    #fig.suptitle(f"{dataset_title}: imputation-averaged cluster profiles", fontsize=20)
-    
+    # fig.suptitle(f"{dataset_title}: imputation-averaged cluster profiles", fontsize=20)
+
     save_figure(fig, outpath_base)
 
 
@@ -440,7 +455,13 @@ def make_overview_table(missing_df, imp_df, method_summary):
 def make_missingness_table(missing_summary):
     tmp = missing_summary.copy().sort_values("missing_prop", ascending=False)
     tmp["Missing proportion"] = tmp["missing_prop"].map(lambda x: f"{100.0 * x:.1f}\\%")
-    tmp = tmp.rename(columns={"variable": "Variable", "missing_n": "Missing $n$", "nonmissing_n": "Observed $n$"})
+    tmp = tmp.rename(
+        columns={
+            "variable": "Variable",
+            "missing_n": "Missing $n$",
+            "nonmissing_n": "Observed $n$",
+        }
+    )
     return tmp.loc[:, ["Variable", "Missing $n$", "Observed $n$", "Missing proportion"]]
 
 
@@ -454,9 +475,21 @@ def make_method_summary_table(method_summary):
                 "$k$": int(tmp["selected_k"]),
                 "$n$ clustered": int(tmp["n_clustered"]),
                 "Coverage": f"{100.0 * tmp['coverage']:.1f}\\%",
-                "Silhouette": "--" if pd.isna(tmp["Silhouette_mean"]) else f"{tmp['Silhouette_mean']:.3f}",
-                "Silhouette SD": "--" if pd.isna(tmp["Silhouette_sd"]) else f"{tmp['Silhouette_sd']:.3f}",
-                "Base instability": "--" if pd.isna(tmp["base_stability"]) else f"{tmp['base_stability']:.3f}",
+                "Silhouette": (
+                    "--"
+                    if pd.isna(tmp["Silhouette_mean"])
+                    else f"{tmp['Silhouette_mean']:.3f}"
+                ),
+                "Silhouette SD": (
+                    "--"
+                    if pd.isna(tmp["Silhouette_sd"])
+                    else f"{tmp['Silhouette_sd']:.3f}"
+                ),
+                "Base instability": (
+                    "--"
+                    if pd.isna(tmp["base_stability"])
+                    else f"{tmp['base_stability']:.3f}"
+                ),
             }
         )
     return pd.DataFrame(rows)
@@ -500,11 +533,17 @@ def make_outcome_summary_table(meta_df, labels_dict):
             if outcome not in merged.columns:
                 continue
             vals = pd.to_numeric(merged[outcome], errors="coerce")
-            tmp = pd.DataFrame({"cluster": merged["cluster"].astype(int), "value": vals})
+            tmp = pd.DataFrame(
+                {"cluster": merged["cluster"].astype(int), "value": vals}
+            )
             tmp = tmp.dropna()
             if tmp.shape[0] == 0:
                 continue
-            res = tmp.groupby("cluster")["value"].agg(["count", "mean", "median"]).reset_index()
+            res = (
+                tmp.groupby("cluster")["value"]
+                .agg(["count", "mean", "median"])
+                .reset_index()
+            )
             for _, row in res.iterrows():
                 rows.append(
                     {
@@ -563,17 +602,18 @@ for methname in ["ccakmeanspp", "kpod", "MICluEnHpp", "MICluEnN", "MICluEnNMI"]:
 aligned_labels = align_all_labels(labels_dict, reference_method)
 
 embedding_df = compute_mce_embedding(imp_df, feature_cols)
-plot_mce_embedding_panels(embedding_df, aligned_labels, method_summary, f"{figures_dir}/pbc_mce_embedding_panels")
-plot_cluster_profile_heatmaps(imp_df, feature_cols, aligned_labels, f"{figures_dir}/pbc_cluster_profile_heatmaps")
+plot_mce_embedding_panels(
+    embedding_df,
+    aligned_labels,
+    method_summary,
+    f"{figures_dir}/pbc_mce_embedding_panels",
+)
+plot_cluster_profile_heatmaps(
+    imp_df, feature_cols, aligned_labels, f"{figures_dir}/pbc_cluster_profile_heatmaps"
+)
 plot_agreement_heatmap(agreement_matrix, f"{figures_dir}/pbc_agreement_heatmap")
 plot_missingness(missing_summary, f"{figures_dir}/pbc_missingness")
 plot_silhouette_boxplot(res_scores, f"{figures_dir}/pbc_silhouette_boxplot")
-if manifest.get("k_selection_mode") == "auto" and res_kselect is not None:
-    plot_k_selection_boxplot(
-        res_kselect,
-        int(manifest["selected_k"]),
-        f"{figures_dir}/pbc_k_selection_silhouette_boxplot",
-    )
 
 overview_table = make_overview_table(missing_df, imp_df, method_summary)
 missingness_table = make_missingness_table(missing_summary)
@@ -591,7 +631,7 @@ if outcome_table.shape[0] > 0:
     print_latex_table("PBC outcome summary", outcome_table)
 
 
-#load data for support
+# load data for support
 dataset_prefix = "support"
 dataset_title = "SUPPORT"
 input_dir = "../realdata/support"
@@ -604,7 +644,9 @@ missing_summary = pd.read_csv(f"{input_dir}/support_missingness_summary.csv")
 labels_df = pd.read_csv(f"{results_dir}/support_consensus_labels.csv")
 method_summary = pd.read_csv(f"{results_dir}/support_method_summary.csv")
 res_scores = pd.read_csv(f"{results_dir}/support_internal_values.csv")
-agreement_matrix = pd.read_csv(f"{results_dir}/support_method_agreement.csv", index_col=0)
+agreement_matrix = pd.read_csv(
+    f"{results_dir}/support_method_agreement.csv", index_col=0
+)
 manifest = load_manifest(f"{results_dir}/support_run_manifest.json")
 feature_cols = manifest["feature_cols"]
 
@@ -629,17 +671,21 @@ for methname in ["ccakmeanspp", "kpod", "MICluEnHpp", "MICluEnN", "MICluEnNMI"]:
 aligned_labels = align_all_labels(labels_dict, reference_method)
 
 embedding_df = compute_mce_embedding(imp_df, feature_cols)
-plot_mce_embedding_panels(embedding_df, aligned_labels, method_summary, f"{figures_dir}/support_mce_embedding_panels")
-plot_cluster_profile_heatmaps(imp_df, feature_cols, aligned_labels, f"{figures_dir}/support_cluster_profile_heatmaps")
+plot_mce_embedding_panels(
+    embedding_df,
+    aligned_labels,
+    method_summary,
+    f"{figures_dir}/support_mce_embedding_panels",
+)
+plot_cluster_profile_heatmaps(
+    imp_df,
+    feature_cols,
+    aligned_labels,
+    f"{figures_dir}/support_cluster_profile_heatmaps",
+)
 plot_agreement_heatmap(agreement_matrix, f"{figures_dir}/support_agreement_heatmap")
 plot_missingness(missing_summary, f"{figures_dir}/support_missingness")
 plot_silhouette_boxplot(res_scores, f"{figures_dir}/support_silhouette_boxplot")
-if manifest.get("k_selection_mode") == "auto" and res_kselect is not None:
-    plot_k_selection_boxplot(
-        res_kselect,
-        int(manifest["selected_k"]),
-        f"{figures_dir}/support_k_selection_silhouette_boxplot",
-    )
 
 overview_table = make_overview_table(missing_df, imp_df, method_summary)
 missingness_table = make_missingness_table(missing_summary)

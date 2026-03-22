@@ -208,7 +208,7 @@ for metric in metrics_to_plot:
                 ax2.legend_.remove()
 
     plt.tight_layout(rect=[0, 0.08, 1, 1])
-    
+
     fig.legend(
         handles_all,
         labels_all,
@@ -300,7 +300,7 @@ def plot_exp2_family(prefix, stab_file, first_fig_no):
                         ax2.legend_.remove()
 
             plt.tight_layout(rect=[0, 0.08, 1, 1])
-            
+
             fig.legend(
                 handles_all,
                 labels_all,

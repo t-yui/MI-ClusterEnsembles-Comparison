@@ -29,7 +29,7 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 # parameters
 input_dir = "../realdata/pbc"
 output_dir = "../realdata/pbc/results"
-#k = 3
+# k = 3
 k = None
 candidate_k_values = list(range(2, 11))
 seed_num = 1
@@ -105,8 +105,7 @@ def detect_elbow_k(summary_df, value_col="Inertia_median"):
     pts = np.column_stack([x_norm, y_norm])
 
     numerator = np.abs(
-        (p2[0] - p1[0]) * (p1[1] - pts[:, 1])
-        - (p1[0] - pts[:, 0]) * (p2[1] - p1[1])
+        (p2[0] - p1[0]) * (p1[1] - pts[:, 1]) - (p1[0] - pts[:, 0]) * (p2[1] - p1[1])
     )
     denominator = np.linalg.norm(p2 - p1)
     distances = numerator / denominator
@@ -144,7 +143,7 @@ def plot_k_selection_elbow(summary_df, selected_k, outpath_base):
     ax.set_ylabel("Median inertia", fontsize=20)
     ax.tick_params(axis="x", labelsize=16)
     ax.tick_params(axis="y", labelsize=16)
-    #ax.set_title("k selection by elbow method", fontsize=20)
+    # ax.set_title("k selection by elbow method", fontsize=20)
 
     ax.text(
         selected_k + 0.1,
@@ -263,9 +262,9 @@ if k is None:
     )
 
     res_kselect_summary["elbow_distance"] = elbow_distances
-    res_kselect_summary["selected"] = (
-        res_kselect_summary["k"] == selected_k
-    ).astype(int)
+    res_kselect_summary["selected"] = (res_kselect_summary["k"] == selected_k).astype(
+        int
+    )
 
     res_kselect_summary.to_csv(
         f"{output_dir}/pbc_k_selection_summary.csv",
@@ -304,7 +303,9 @@ for imp_no in imp_values:
     base_clusterings.append(pd.Series(labels_tmp, index=ids, name=f"imp_{imp_no}"))
 base_clusterings = pd.concat(base_clusterings, axis=1)
 base_clusterings.index.name = "id"
-base_clusterings.reset_index().to_csv(f"{output_dir}/pbc_base_clusterings.csv", index=False)
+base_clusterings.reset_index().to_csv(
+    f"{output_dir}/pbc_base_clusterings.csv", index=False
+)
 base_stability = stab(base_clusterings.values.T)
 
 
@@ -313,7 +314,9 @@ cc_df = missing_df.dropna().copy()
 cc_labels = pd.Series(np.nan, index=missing_df["id"].values, name="ccakmeanspp")
 if cc_df.shape[0] >= selected_k:
     cc_scaled = scale_matrix(cc_df.loc[:, feature_cols])
-    cc_pred = apply_kmeans_clustering_(cc_scaled, n_clst=selected_k, random_state=seed_num)
+    cc_pred = apply_kmeans_clustering_(
+        cc_scaled, n_clst=selected_k, random_state=seed_num
+    )
     cc_labels.loc[cc_df["id"].values] = cc_pred
 else:
     cc_scaled = np.empty((0, len(feature_cols)))
@@ -322,17 +325,11 @@ else:
 # k-pod
 kpod_labels_df, kpod_completed_df = run_kpod_clustering(selected_k)
 kpod_labels = (
-    kpod_labels_df
-    .set_index("id")
-    .loc[missing_df["id"].values, "kpod"]
-    .astype(int)
+    kpod_labels_df.set_index("id").loc[missing_df["id"].values, "kpod"].astype(int)
 )
 kpod_labels.name = "kpod"
 kpod_completed = (
-    kpod_completed_df
-    .set_index("id")
-    .loc[missing_df["id"].values, feature_cols]
-    .values
+    kpod_completed_df.set_index("id").loc[missing_df["id"].values, feature_cols].values
 )
 
 
@@ -340,7 +337,9 @@ kpod_completed = (
 print("====== PBC, MI-AClu")
 labels_aclu = apply_mi_ensemble_clustering(base_clusterings, n_clst=selected_k)
 print("====== PBC, MI-NMF")
-labels_nmf = apply_mi_ensemble_clustering_NMF(base_clusterings, n_clst=selected_k, random_state=seed_num)
+labels_nmf = apply_mi_ensemble_clustering_NMF(
+    base_clusterings, n_clst=selected_k, random_state=seed_num
+)
 print("====== PBC, MI-GNMI")
 labels_gnmi = apply_mi_ensemble_clustering_nmi(base_clusterings, n_clst=selected_k)
 
@@ -410,8 +409,16 @@ for methname in method_order:
             "n_clusters": int(labels_tmp.dropna().nunique()),
             "Silhouette_mean": tmp["Silhouette"].mean(),
             "Silhouette_sd": tmp["Silhouette"].std(),
-            "base_stability": base_stability if methname in ["MICluEnHpp", "MICluEnN", "MICluEnNMI"] else np.nan,
-            "mean_pairwise_nmi": 1 - base_stability if methname in ["MICluEnHpp", "MICluEnN", "MICluEnNMI"] else np.nan,
+            "base_stability": (
+                base_stability
+                if methname in ["MICluEnHpp", "MICluEnN", "MICluEnNMI"]
+                else np.nan
+            ),
+            "mean_pairwise_nmi": (
+                1 - base_stability
+                if methname in ["MICluEnHpp", "MICluEnN", "MICluEnNMI"]
+                else np.nan
+            ),
         }
     )
 method_summary = pd.DataFrame(summary_rows)
