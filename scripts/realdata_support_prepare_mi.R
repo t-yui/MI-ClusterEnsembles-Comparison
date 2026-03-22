@@ -12,7 +12,7 @@ library(dplyr)
 
 
 # parameters
-output_dir <- "../realdata/support"
+output_dir <- "../data"
 m <- 30
 maxit <- 50
 seed.num <- 1
@@ -28,10 +28,6 @@ candidate_meta_vars <- c(
   "sex", "race", "dzgroup", "dzclass", "income", "edu",
   "hospdead", "death", "d.time", "slos", "totcst", "sfdm2"
 )
-
-
-dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
-
 
 # load data
 Hmisc::getHdata(support)
@@ -65,9 +61,9 @@ missing_summary <- data.frame(
   nonmissing_n = nrow(df_cluster) - colSums(is.na(df_cluster))
 )
 
-write.csv(cbind(id = orig_id, df_cluster), file.path(output_dir, "support_missing_data.csv"), row.names = FALSE)
-write.csv(df_meta, file.path(output_dir, "support_meta.csv"), row.names = FALSE)
-write.csv(missing_summary, file.path(output_dir, "support_missingness_summary.csv"), row.names = FALSE)
+write.csv(cbind(id = orig_id, df_cluster), file.path("../data_mi", "support_missing_data.csv"), row.names = FALSE)
+write.csv(df_meta, file.path("../data_mi", "support_meta.csv"), row.names = FALSE)
+write.csv(missing_summary, file.path("../results", "support_missingness_summary.csv"), row.names = FALSE)
 
 
 # multiple imputation
@@ -86,7 +82,6 @@ imp <- imp[, c(".imp", ".id", cluster_vars), drop = FALSE]
 write.csv(imp, file.path(output_dir, "imp_support.csv"), row.names = FALSE)
 saveRDS(production_mice, file.path(output_dir, "support_mids.rds"))
 
-
 # manifest
 manifest <- c(
   sprintf("dataset=SUPPORT"),
@@ -99,7 +94,4 @@ manifest <- c(
   sprintf("max_missing_prop=%.2f", max_missing_prop),
   sprintf("cluster_vars=%s", paste(cluster_vars, collapse = ", "))
 )
-writeLines(manifest, file.path(output_dir, "support_manifest.txt"))
-
-cat("Processed: SUPPORT\n")
-cat("n =", nrow(df_cluster), ", p =", length(cluster_vars), ", m =", m, "\n")
+writeLines(manifest, file.path("../results", "support_manifest.txt"))

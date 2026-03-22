@@ -12,7 +12,7 @@ library(dplyr)
 
 
 # parameters
-output_dir <- "../realdata/pbc"
+output_dir <- "../data"
 m <- 30
 maxit <- 50
 seed.num <- 1
@@ -30,10 +30,6 @@ candidate_meta_vars <- c(
 
 # categorical variables more than 3 level
 categorical_cluster_vars <- c("edema")
-
-
-dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
-
 
 make_dummy_df <- function(dat, vars_to_dummy) {
   out_list <- list()
@@ -103,7 +99,7 @@ write.csv(
 write.csv(df_meta, file.path(output_dir, "pbc_meta.csv"), row.names = FALSE)
 write.csv(
   missing_summary,
-  file.path(output_dir, "pbc_missingness_summary.csv"),
+  file.path("../results", "pbc_missingness_summary.csv"),
   row.names = FALSE
 )
 
@@ -140,23 +136,16 @@ imp <- as.data.frame(rbindlist(imp_list, use.names = TRUE))
 imp$.id <- as.integer(imp$.id)
 imp <- imp[, c(".imp", ".id", cluster_vars), drop = FALSE]
 
-write.csv(imp, file.path(output_dir, "imp_pbc.csv"), row.names = FALSE)
-saveRDS(production_mice, file.path(output_dir, "pbc_mids.rds"))
+write.csv(imp, file.path("../data_mi", "imp_pbc.csv"), row.names = FALSE)
+saveRDS(production_mice, file.path(data_mi, "pbc_mids.rds"))
 
-
-# manifest
-manifest <- c(
+manifest manifest <- c(
   sprintf("dataset=PBC"),
   sprintf("n_rows=%d", nrow(df_cluster)),
   sprintf("n_complete_cases=%d", sum(stats::complete.cases(df_cluster))),
-  sprintf("n_vars=%d", length(cluster_vars)),
-  sprintf("m=%d", m),
-  sprintf("maxit=%d", maxit),
-  sprintf("seed=%d", seed.num),
+  sprintf("n_vars=%d", length(cluster_vars)), sprintf("m=%d", m),
+  sprintf("maxit=%d", maxit), sprintf("seed=%d", seed.num),
   sprintf("max_missing_prop=%.2f", max_missing_prop),
   sprintf("cluster_vars=%s", paste(cluster_vars, collapse = ", "))
 )
-writeLines(manifest, file.path(output_dir, "pbc_manifest.txt"))
-
-cat("Processed: PBC\n")
-cat("n =", nrow(df_cluster), ", p =", length(cluster_vars), ", m =", m, "\n")
+writeLines(manifest, file.path("../results", "support_manifest.txt"))

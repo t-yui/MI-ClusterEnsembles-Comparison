@@ -4,45 +4,14 @@ This repository is dedicated to the data availability for the paper [**A Compara
 
 # How to conduct simulation
 
-## Experiment 1
+## Numerical Experiments
 
 ```bash
-$ python3 experiment_1.py
+./exec_numerical_experiments.sh
 ```
 
-## Experiment 2
-
-### data generation
+# Application to Real Data
 
 ```bash
-$ python3 experiment_2_1_gendata.py
-```
-### perform multiple imputation
-
-```bash
-$ Rscript experiment_2_2_mi.R
-```
-
-### kpod clustering
-
-```bash
-$ Rscript experiment_2_3_kpod.R
-```
-
-### ensemble clustering
-
-```bash
-$ python3 experiment_2_4_clustering.py
-```
-
-### evaluation
-
-```bash
-$ python3 experiment_2_5_evaluation.py
-```
-
-## plot results
-
-```bash
-$ python3 experiment_plot.py
+./exec_application_real_data.sh
 ```

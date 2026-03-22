@@ -567,11 +567,11 @@ def print_latex_table(title, df):
 dataset_prefix = "pbc"
 dataset_title = "PBC"
 embedding_method = "tsne"
-input_dir = "../realdata/pbc"
-results_dir = "../realdata/pbc/results"
-output_dir = "../realdata/pbc/results/report"
+input_dir = "../data"
+results_dir = "../results"
+output_dir = "../plots"
 missing_df = pd.read_csv(f"{input_dir}/pbc_missing_data.csv")
-imp_df = pd.read_csv(f"{input_dir}/imp_pbc.csv")
+imp_df = pd.read_csv("../data_mi/imp_pbc.csv")
 meta_df = pd.read_csv(f"{input_dir}/pbc_meta.csv")
 missing_summary = pd.read_csv(f"{input_dir}/pbc_missingness_summary.csv")
 labels_df = pd.read_csv(f"{results_dir}/pbc_consensus_labels.csv")
@@ -593,7 +593,7 @@ imp_df[".imp"] = imp_df[".imp"].astype(int)
 meta_df["id"] = meta_df["id"].astype(int)
 labels_df["id"] = labels_df["id"].astype(int)
 
-figures_dir = f"{output_dir}/figures"
+figures_dir = "../plots"
 os.makedirs(figures_dir, exist_ok=True)
 
 labels_dict = {}
@@ -634,11 +634,11 @@ if outcome_table.shape[0] > 0:
 # load data for support
 dataset_prefix = "support"
 dataset_title = "SUPPORT"
-input_dir = "../realdata/support"
-results_dir = "../realdata/support/results"
-output_dir = "../realdata/support/results/report"
+input_dir = "../data"
+results_dir = "../results"
+output_dir = "../plots"
 missing_df = pd.read_csv(f"{input_dir}/support_missing_data.csv")
-imp_df = pd.read_csv(f"{input_dir}/imp_support.csv")
+imp_df = pd.read_csv("../data_mi/imp_support.csv")
 meta_df = pd.read_csv(f"{input_dir}/support_meta.csv")
 missing_summary = pd.read_csv(f"{input_dir}/support_missingness_summary.csv")
 labels_df = pd.read_csv(f"{results_dir}/support_consensus_labels.csv")
@@ -662,7 +662,7 @@ imp_df[".imp"] = imp_df[".imp"].astype(int)
 meta_df["id"] = meta_df["id"].astype(int)
 labels_df["id"] = labels_df["id"].astype(int)
 
-figures_dir = f"{output_dir}/figures"
+figures_dir = "../plots"
 os.makedirs(figures_dir, exist_ok=True)
 
 labels_dict = {}

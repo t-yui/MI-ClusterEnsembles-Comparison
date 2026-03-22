@@ -9,8 +9,8 @@ library(kpodclustr)
 
 
 # parameters
-input_dir <- "../realdata/support"
-output_dir <- "../realdata/support/results"
+input_dir <- "../data"
+output_dir <- "../results"
 k <- 5
 maxiter <- 100
 selected_k_path <- file.path(output_dir, "support_selected_k.txt")

@@ -27,8 +27,8 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 
 # parameters
-input_dir = "../realdata/pbc"
-output_dir = "../realdata/pbc/results"
+input_dir = "../data"
+output_dir = "../results"
 # k = 3
 k = None
 candidate_k_values = list(range(2, 11))
@@ -196,7 +196,7 @@ def run_kpod_clustering(selected_k):
 
 # load data
 missing_df = pd.read_csv(f"{input_dir}/pbc_missing_data.csv")
-imp_df = pd.read_csv(f"{input_dir}/imp_pbc.csv")
+imp_df = pd.read_csv("../data_mi/imp_pbc.csv")
 meta_df = pd.read_csv(f"{input_dir}/pbc_meta.csv")
 
 missing_df["id"] = missing_df["id"].astype(int)
@@ -271,7 +271,7 @@ if k is None:
         index=False,
     )
 
-    figures_dir = f"{output_dir}/report/figures"
+    figures_dir = "../plots"
     os.makedirs(figures_dir, exist_ok=True)
 
     plot_k_selection_elbow(
@@ -466,6 +466,3 @@ manifest = {
 }
 with open(f"{output_dir}/pbc_run_manifest.json", "w") as f:
     json.dump(manifest, f, indent=2)
-
-print("Finished: PBC clustering")
-print(f"base stability = {base_stability:.4f}")
