@@ -137,7 +137,7 @@ imp$.id <- as.integer(imp$.id)
 imp <- imp[, c(".imp", ".id", cluster_vars), drop = FALSE]
 
 write.csv(imp, file.path("../data_mi", "imp_pbc.csv"), row.names = FALSE)
-saveRDS(production_mice, file.path(data_mi, "pbc_mids.rds"))
+saveRDS(production_mice, file.path("../data_mi", "pbc_mids.rds"))
 
 manifest manifest <- c(
   sprintf("dataset=PBC"),

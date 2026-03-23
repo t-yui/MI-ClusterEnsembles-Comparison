@@ -61,8 +61,8 @@ missing_summary <- data.frame(
   nonmissing_n = nrow(df_cluster) - colSums(is.na(df_cluster))
 )
 
-write.csv(cbind(id = orig_id, df_cluster), file.path("../data_mi", "support_missing_data.csv"), row.names = FALSE)
-write.csv(df_meta, file.path("../data_mi", "support_meta.csv"), row.names = FALSE)
+write.csv(cbind(id = orig_id, df_cluster), file.path(output_dir, "support_missing_data.csv"), row.names = FALSE)
+write.csv(df_meta, file.path(output_dir, "support_meta.csv"), row.names = FALSE)
 write.csv(missing_summary, file.path("../results", "support_missingness_summary.csv"), row.names = FALSE)
 
 
@@ -79,8 +79,8 @@ production_mice <- mice(
 imp <- complete(production_mice, "long", include = FALSE)
 imp$.id <- as.integer(imp$.id)
 imp <- imp[, c(".imp", ".id", cluster_vars), drop = FALSE]
-write.csv(imp, file.path(output_dir, "imp_support.csv"), row.names = FALSE)
-saveRDS(production_mice, file.path(output_dir, "support_mids.rds"))
+write.csv(imp, file.path("../data_mi", "imp_support.csv"), row.names = FALSE)
+saveRDS(production_mice, file.path("../data_mi", "support_mids.rds"))
 
 # manifest
 manifest <- c(
