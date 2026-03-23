@@ -5,13 +5,17 @@ from tqdm import tqdm
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import scale
 from os import path
+import os
 from tqdm import tqdm
 from logzero import logger
 from modules import (
-    apply_kmeans_clustering,
+    stab,
+    apply_kmeans_clustering_,
+    apply_each_clustering_,
     apply_mi_ensemble_clustering_NMF,
     apply_mi_ensemble_clustering_nmi,
     apply_mi_ensemble_clustering,
+    exec_clustering,
 )
 
 
@@ -32,11 +36,13 @@ for n in n_values:
         for s in tqdm(range(S)):
             filepath_not_missing_data = f"../data/3c_n{n}_rho{rho}_{s}.csv"
             data = pd.read_csv(filepath_not_missing_data).iloc[:, 1:]
-            labels = apply_kmeans_clustering(data, n_clst=3, random_state=s + 1)
+            # labels = apply_kmeans_clustering(data, n_clst=3, random_state=s + 1)
+            labels = apply_kmeans_clustering_(data, n_clst=3)
             cluster_labels.append(labels)
         res = pd.DataFrame(cluster_labels).T
         output_file_name = f"res_kmeans_3c_n{n}_rho{rho}.csv"
         res.to_csv(f"../results/{output_file_name}", index=False)
+
 
 ## class-imbalanced scenarios
 for n in n_values:
@@ -45,27 +51,12 @@ for n in n_values:
         for s in tqdm(range(S)):
             filepath_not_missing_data = f"../data/3cib_n{n}_rho{rho}_{s}.csv"
             data = pd.read_csv(filepath_not_missing_data).iloc[:, 1:]
-            labels = apply_kmeans_clustering(data, n_clst=3, random_state=s + 1)
+            # labels = apply_kmeans_clustering(data, n_clst=3, random_state=s + 1)
+            labels = apply_kmeans_clustering_(data, n_clst=3)
             cluster_labels.append(labels)
         res = pd.DataFrame(cluster_labels).T
         output_file_name = f"res_kmeans_3cib_n{n}_rho{rho}.csv"
         res.to_csv(f"../results/{output_file_name}", index=False)
-
-
-# complete case analysis
-def exec_clustering(filepath):
-    X = pd.read_csv(filepath, index_col=0)
-    original_index = X.index
-    X_complete = X.dropna()
-    if len(X_complete) < k:
-        labels = np.full(shape=len(original_index), fill_value=np.nan)
-    else:
-        X_scaled = scale(X_complete)
-        kmeans = KMeans(n_clusters=k, init="k-means++", n_init=10)
-        kmeans.fit(X_scaled)
-        labels = np.full(shape=len(original_index), fill_value=-1)
-        labels[original_index.isin(X_complete.index)] = kmeans.labels_
-    return labels
 
 
 ## class-balanced scenarios
@@ -105,13 +96,14 @@ for scenario in scenarios:
 
 # cluster ensemble
 ## base clustering
+### class-balanced scenarios
 for scenario in scenarios:
     for n in n_values:
         for rho in rho_values:
             for tau in tau_values:
                 for s in tqdm(range(S)):
                     output_file_name = (
-                        f"res_baseKmeans_3c_n{n}_rho{rho}_tau{tau}_{scenario}_{s}.csv"
+                        f"res_baseKmeanspp_3c_n{n}_rho{rho}_tau{tau}_{scenario}_{s}.csv"
                     )
                     outpath = f"../results/{output_file_name}"
                     if os.path.exists(outpath):
@@ -119,9 +111,28 @@ for scenario in scenarios:
                     else:
                         filepath_not_missing_data = f"../data_mi/imp_3c_n{n}_rho{rho}_tau{tau}_{scenario}_{s}.csv"
                         data = pd.read_csv(filepath_not_missing_data).iloc[:, 1:]
-                        labels = apply_each_clustering(data, cls_times=30, n_clst=3)
+                        labels = apply_each_clustering_(data, cls_times=30, n_clst=3)
                         res = pd.DataFrame(labels).T
                         res.to_csv(outpath, index=False)
+
+
+### class-imbalanced scenarios
+for scenario in scenarios:
+    for n in n_values:
+        for rho in rho_values:
+            for tau in tau_values:
+                for s in tqdm(range(S)):
+                    output_file_name = f"res_baseKmeanspp_3cib_n{n}_rho{rho}_tau{tau}_{scenario}_{s}.csv"
+                    outpath = f"../results/{output_file_name}"
+                    if os.path.exists(outpath):
+                        pass
+                    else:
+                        filepath_not_missing_data = f"../data_mi/imp_3cib_n{n}_rho{rho}_tau{tau}_{scenario}_{s}.csv"
+                        data = pd.read_csv(filepath_not_missing_data).iloc[:, 1:]
+                        labels = apply_each_clustering_(data, cls_times=30, n_clst=3)
+                        res = pd.DataFrame(labels).T
+                        res.to_csv(outpath, index=False)
+
 
 ## AClu ensemble
 ### class-balanced scenarios
@@ -141,7 +152,7 @@ for scenario in scenarios:
                         labels = apply_mi_ensemble_clustering(res_bc, n_clst=3)
                         cluster_labels.append(labels)
                     except:
-                        pass
+                        cluster_labels.append(np.full(n, np.nan))
                 res = pd.DataFrame(cluster_labels).T
                 output_file_name = (
                     f"res_MICluEnHpp_3c_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
@@ -160,14 +171,12 @@ for scenario in scenarios:
                 for s in tqdm(range(S)):
                     try:
                         res_file_name = f"res_baseKmeanspp_3cib_n{n}_rho{rho}_tau{tau}_{scenario}_{s}.csv"
-                        res_path = (
-                            f"../results_audigier_base_clustering/{res_file_name}"
-                        )
+                        res_path = f"../results/{res_file_name}"
                         res_bc = pd.read_csv(res_path)
-                        labels = apply_mi_ensemble_clustering_nmi(res_bc, n_clst=3)
+                        labels = apply_mi_ensemble_clustering(res_bc, n_clst=3)
                         cluster_labels.append(labels)
                     except:
-                        pass
+                        cluster_labels.append(np.full(n, np.nan))
                 res = pd.DataFrame(cluster_labels).T
                 output_file_name = (
                     f"res_MICluEnHpp_3cib_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
@@ -192,7 +201,7 @@ for scenario in scenarios:
                         labels = apply_mi_ensemble_clustering_NMF(res_bc, n_clst=3)
                         cluster_labels.append(labels)
                     except:
-                        pass
+                        cluster_labels.append(np.full(n, np.nan))
                 res = pd.DataFrame(cluster_labels).T
                 output_file_name = (
                     f"res_MICluEnN_3c_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
@@ -216,7 +225,7 @@ for scenario in scenarios:
                         labels = apply_mi_ensemble_clustering_NMF(res_bc, n_clst=3)
                         cluster_labels.append(labels)
                     except:
-                        pass
+                        cluster_labels.append(np.full(n, np.nan))
                 res = pd.DataFrame(cluster_labels).T
                 output_file_name = (
                     f"res_MICluEnN_3cib_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
@@ -241,7 +250,7 @@ for scenario in scenarios:
                         labels = apply_mi_ensemble_clustering_nmi(res_bc, n_clst=3)
                         cluster_labels.append(labels)
                     except:
-                        pass
+                        cluster_labels.append(np.full(n, np.nan))
                 res = pd.DataFrame(cluster_labels).T
                 output_file_name = (
                     f"res_MICluEnNMI_3c_n{n}_rho{rho}_tau{tau}_{scenario}.csv"
@@ -265,7 +274,7 @@ for scenario in scenarios:
                         labels = apply_mi_ensemble_clustering_nmi(res_bc, n_clst=3)
                         cluster_labels.append(labels)
                     except:
-                        pass
+                        cluster_labels.append(np.full(n, np.nan))
                 res = pd.DataFrame(cluster_labels).T
                 output_file_name = (
                     f"res_MICluEnNMI_3cib_n{n}_rho{rho}_tau{tau}_{scenario}.csv"

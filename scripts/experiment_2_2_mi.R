@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-setwd("/your_own_path/MI-ClusterEnsembles-Comparison/scripts/")
+setwd("/your_directory/MI-ClusterEnsembles-Comparison/scripts/")
 
 library(mice)
 library(data.table)
@@ -44,7 +44,7 @@ mclapply(1:nrow(configs), function(i) {
   n <- configs$n[i]
   rho <- configs$rho[i]
   tau <- configs$tau[i]
-  scenario <- configs$scenario[i]ons
+  scenario <- configs$scenario[i]
   s <- configs$s[i]
   process_data(n, rho, tau, scenario, s-1)
 }, mc.cores = numCores)

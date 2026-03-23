@@ -8,6 +8,7 @@ from scipy.spatial import distance
 from sklearn import preprocessing
 from tqdm import tqdm
 from logzero import logger
+from scipy.stats import friedmanchisquare
 from modules import (
     ensemble_clustering_nmi_,
     ensemble_clustering_NMF_,
@@ -32,6 +33,65 @@ def setting_of_simulation():
 
 output = True
 N, Ks, DIM, STD_DEVs, n_sim = setting_of_simulation()
+metrics_to_use = ["ARI", "NMI", "SS", "P"]
+methods = ["NMF", "AClu", "GNMI"]
+
+
+def save_panel_friedman(prefix):
+    rows = []
+    friedman_methods = ["NMF", "GNMI", "AClu"]
+
+    for K in Ks:
+        n = N * K
+        for metric in metrics_to_use:
+            panel_blocks = []
+
+            # 1 panel = fixed (prefix, n), blocks = (STD_DEV, repetition)
+            for STD_DEV in STD_DEVs:
+                score_df = pd.DataFrame(
+                    {
+                        method: pd.read_csv(
+                            f"../results/{prefix}_n{n}_STDDEV_{STD_DEV}_methname{method}.csv"
+                        )[metric]
+                        for method in friedman_methods
+                    }
+                )
+                panel_blocks.append(score_df)
+
+            panel_df = pd.concat(panel_blocks, ignore_index=True)
+            tmp = panel_df[friedman_methods].dropna()
+
+            if len(tmp) < 2:
+                stat, p_value = np.nan, np.nan
+                mean_ranks = pd.Series(np.nan, index=friedman_methods)
+                best_method = np.nan
+            else:
+                stat, p_value = friedmanchisquare(
+                    *(tmp[m].values for m in friedman_methods)
+                )
+                # higher is better -> descending rank, so smaller mean rank is better
+                mean_ranks = tmp.rank(axis=1, ascending=False, method="average").mean()
+                best_method = mean_ranks.idxmin()
+
+            rows.append(
+                {
+                    "scenario": prefix,
+                    "n": n,
+                    "metric": metric,
+                    "n_blocks": len(tmp),
+                    "friedman_chi2": stat,
+                    "p_value": p_value,
+                    "best_method": best_method,
+                    "mean_rank_NMF": mean_ranks["NMF"],
+                    "mean_rank_GNMI": mean_ranks["GNMI"],
+                    "mean_rank_AClu": mean_ranks["AClu"],
+                }
+            )
+
+    pd.DataFrame(rows).to_csv(
+        f"../results/friedman_panel_{prefix}.csv",
+        index=False,
+    )
 
 
 # instability
@@ -50,7 +110,7 @@ pd.Series(stab_dict).to_csv("../results/stabs_balanced.csv", index=False)
 stab_dict = {}
 for K in Ks:
     for STD_DEV in STD_DEVs:
-        ogger.info("====== n={0}, STD_DEV:{1}, stab imbalance".format(N * K, STD_DEV))
+        logger.info("====== n={0}, STD_DEV:{1}, stab imbalance".format(N * K, STD_DEV))
         stab_tmp = eval_scores(
             N, K, DIM, STD_DEV, cls_times=100, imbalance=1, n_clst=3, random_state=1
         )
@@ -66,6 +126,8 @@ for K in Ks:
         methname = "NMF"
         list_ARI = []
         list_NMI = []
+        list_SS = []
+        list_P = []
         for i in tqdm(range(n_sim)):
             data, labels = gen_data(N, K, DIM, STD_DEV, random_state=i)
             labels_pred, labels_list = ensemble_clustering_NMF_(
@@ -74,10 +136,14 @@ for K in Ks:
             scores = evaluate_clustering(data, labels, labels_pred)
             list_ARI.append(scores["Adjusted Rand Index"])
             list_NMI.append(scores["NMI"])
+            list_SS.append(scores["Silhouette"])
+            list_P.append(scores["Purity"])
         res_scores = pd.DataFrame(
             {
                 "ARI": list_ARI,
                 "NMI": list_NMI,
+                "SS": list_SS,
+                "P": list_P,
             }
         )
         print(res_scores.mean())
@@ -95,6 +161,8 @@ for K in Ks:
         methname = "NMF"
         list_ARI = []
         list_NMI = []
+        list_SS = []
+        list_P = []
         for i in tqdm(range(n_sim)):
             data, labels = gen_data_imbalanced(N, K, DIM, STD_DEV, random_state=i)
             labels_pred, labels_list = ensemble_clustering_NMF_(
@@ -103,10 +171,14 @@ for K in Ks:
             scores = evaluate_clustering(data, labels, labels_pred)
             list_ARI.append(scores["Adjusted Rand Index"])
             list_NMI.append(scores["NMI"])
+            list_SS.append(scores["Silhouette"])
+            list_P.append(scores["Purity"])
         res_scores = pd.DataFrame(
             {
                 "ARI": list_ARI,
                 "NMI": list_NMI,
+                "SS": list_SS,
+                "P": list_P,
             }
         )
         print(res_scores.mean())
@@ -126,6 +198,8 @@ for K in Ks:
         methname = "AClu"
         list_ARI = []
         list_NMI = []
+        list_SS = []
+        list_P = []
         for i in tqdm(range(n_sim)):
             data, labels = gen_data(N, K, DIM, STD_DEV, random_state=i)
             labels_pred, labels_list = ensemble_clustering_(
@@ -134,10 +208,14 @@ for K in Ks:
             scores = evaluate_clustering(data, labels, labels_pred)
             list_ARI.append(scores["Adjusted Rand Index"])
             list_NMI.append(scores["NMI"])
+            list_SS.append(scores["Silhouette"])
+            list_P.append(scores["Purity"])
         res_scores = pd.DataFrame(
             {
                 "ARI": list_ARI,
                 "NMI": list_NMI,
+                "SS": list_SS,
+                "P": list_P,
             }
         )
         print(res_scores.mean())
@@ -155,6 +233,8 @@ for K in Ks:
         methname = "AClu"
         list_ARI = []
         list_NMI = []
+        list_SS = []
+        list_P = []
         for i in tqdm(range(n_sim)):
             data, labels = gen_data_imbalanced(N, K, DIM, STD_DEV, random_state=i)
             labels_pred, labels_list = ensemble_clustering_(
@@ -163,10 +243,14 @@ for K in Ks:
             scores = evaluate_clustering(data, labels, labels_pred)
             list_ARI.append(scores["Adjusted Rand Index"])
             list_NMI.append(scores["NMI"])
+            list_SS.append(scores["Silhouette"])
+            list_P.append(scores["Purity"])
         res_scores = pd.DataFrame(
             {
                 "ARI": list_ARI,
                 "NMI": list_NMI,
+                "SS": list_SS,
+                "P": list_P,
             }
         )
         print(res_scores.mean())
@@ -186,6 +270,8 @@ for K in Ks:
         methname = "GNMI"
         list_ARI = []
         list_NMI = []
+        list_SS = []
+        list_P = []
         for i in tqdm(range(n_sim)):
             data, labels = gen_data(N, K, DIM, STD_DEV, random_state=i)
             labels_pred, labels_list = ensemble_clustering_nmi_(
@@ -194,10 +280,14 @@ for K in Ks:
             scores = evaluate_clustering(data, labels, labels_pred)
             list_ARI.append(scores["Adjusted Rand Index"])
             list_NMI.append(scores["NMI"])
+            list_SS.append(scores["Silhouette"])
+            list_P.append(scores["Purity"])
         res_scores = pd.DataFrame(
             {
                 "ARI": list_ARI,
                 "NMI": list_NMI,
+                "SS": list_SS,
+                "P": list_P,
             }
         )
         print(res_scores.mean())
@@ -215,6 +305,8 @@ for K in Ks:
         methname = "GNMI"
         list_ARI = []
         list_NMI = []
+        list_SS = []
+        list_P = []
         for i in tqdm(range(n_sim)):
             data, labels = gen_data_imbalanced(N, K, DIM, STD_DEV, random_state=i)
             labels_pred, labels_list = ensemble_clustering_nmi_(
@@ -223,10 +315,14 @@ for K in Ks:
             scores = evaluate_clustering(data, labels, labels_pred)
             list_ARI.append(scores["Adjusted Rand Index"])
             list_NMI.append(scores["NMI"])
+            list_SS.append(scores["Silhouette"])
+            list_P.append(scores["Purity"])
         res_scores = pd.DataFrame(
             {
                 "ARI": list_ARI,
                 "NMI": list_NMI,
+                "SS": list_SS,
+                "P": list_P,
             }
         )
         print(res_scores.mean())
@@ -236,3 +332,7 @@ for K in Ks:
             ),
             index=False,
         )
+
+
+save_panel_friedman("balanced")
+save_panel_friedman("imbalanced")

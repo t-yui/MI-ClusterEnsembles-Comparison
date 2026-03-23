@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from scipy.stats import norm
 
 
 def generate_covariance(rho):
@@ -43,6 +44,7 @@ mu2 = np.concatenate([np.zeros(5), np.ones(5) * 2])
 mu3 = np.concatenate([np.ones(10) * 2])
 n_values = [30, 60, 120]
 rho_values = [0.3, 0.6]
+tau_values = [0.1, 0.3, 0.5]
 S = 200
 
 
