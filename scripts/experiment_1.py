@@ -166,7 +166,7 @@ for K in Ks:
         for i in tqdm(range(n_sim)):
             data, labels = gen_data_imbalanced(N, K, DIM, STD_DEV, random_state=i)
             labels_pred, labels_list = ensemble_clustering_NMF_(
-                N, K, DIM, STD_DEV, cls_times=30, n_clst=3, random_state=i
+                N, K, DIM, STD_DEV, cls_times=30, n_clst=3, imbalance=1, random_state=i
             )
             scores = evaluate_clustering(data, labels, labels_pred)
             list_ARI.append(scores["Adjusted Rand Index"])
@@ -238,7 +238,7 @@ for K in Ks:
         for i in tqdm(range(n_sim)):
             data, labels = gen_data_imbalanced(N, K, DIM, STD_DEV, random_state=i)
             labels_pred, labels_list = ensemble_clustering_(
-                N, K, DIM, STD_DEV, cls_times=30, n_clst=3, random_state=i
+                N, K, DIM, STD_DEV, cls_times=30, n_clst=3, imbalance=1, random_state=i
             )
             scores = evaluate_clustering(data, labels, labels_pred)
             list_ARI.append(scores["Adjusted Rand Index"])
@@ -310,7 +310,7 @@ for K in Ks:
         for i in tqdm(range(n_sim)):
             data, labels = gen_data_imbalanced(N, K, DIM, STD_DEV, random_state=i)
             labels_pred, labels_list = ensemble_clustering_nmi_(
-                N, K, DIM, STD_DEV, cls_times=30, n_clst=3, random_state=i
+                N, K, DIM, STD_DEV, cls_times=30, n_clst=3, imbalance=1, random_state=i
             )
             scores = evaluate_clustering(data, labels, labels_pred)
             list_ARI.append(scores["Adjusted Rand Index"])
